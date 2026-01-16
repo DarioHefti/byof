@@ -31,7 +31,9 @@ export interface SendChatOptions {
  * @returns Promise resolving to ChatResponse with generated HTML
  * @throws ByofException with code 'CHAT_ERROR' or 'NETWORK_ERROR'
  */
-export async function sendChat(options: SendChatOptions): Promise<ChatResponse> {
+export async function sendChat(
+  options: SendChatOptions
+): Promise<ChatResponse> {
   const {
     endpoint,
     messages,
@@ -106,7 +108,9 @@ export async function sendChat(options: SendChatOptions): Promise<ChatResponse> 
       const errorMessage = parseResult.error.errors
         .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join('; ')
-      logger.error('Invalid chat response', { errors: parseResult.error.errors })
+      logger.error('Invalid chat response', {
+        errors: parseResult.error.errors,
+      })
       throw new ByofException(
         ByofErrorCode.CHAT_ERROR,
         `Invalid response: ${errorMessage}`,

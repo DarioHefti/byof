@@ -93,9 +93,25 @@
   - Updated main index.ts to export `createByof` from core module
   - Installed jsdom for DOM testing
 
+- [x] Task 09: Example Frontend
+  - Created examples/vanilla/index.html with complete demo page
+  - Features:
+    - Configuration panel for chat endpoint, save endpoint, and API spec URL
+    - Theme selector (Default, Dark, Brand Colors)
+    - Initialize/Destroy buttons to control BYOF lifecycle
+    - Event log panel showing all SDK callbacks in real-time
+    - Demo notice explaining how to run with backend
+  - Demonstrates full SDK usage:
+    - `createByof()` initialization with all options
+    - Theme customization via presets
+    - Callback handlers: `onHtmlGenerated`, `onError`, `onSaveComplete`, `onLoadComplete`
+    - Sandbox allowlist configuration
+    - Project/user context
+  - Clean, modern styling matching SDK theme
+  - ES module import from dist folder
+
 ## Pending Tasks
 
-- [ ] Task 09: Example Frontend
 - [ ] Task 10: Example Backend
 
 ---

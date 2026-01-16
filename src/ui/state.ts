@@ -59,10 +59,7 @@ export function updateUI(elements: UIElements, state: UIState): void {
 /**
  * Render messages into the container
  */
-function renderMessages(
-  container: HTMLElement,
-  messages: ByofMessage[]
-): void {
+function renderMessages(container: HTMLElement, messages: ByofMessage[]): void {
   // Clear existing messages
   container.innerHTML = ''
 
