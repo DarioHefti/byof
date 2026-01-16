@@ -72,9 +72,29 @@
   - Exported sandbox module from main index.ts
   - Throws ByofException with SANDBOX_ERROR code
 
+- [x] Task 08: Main Integration
+  - Created src/core/byof.ts with `createByof()` factory function:
+    - Integrates UI rendering, chat, save/load, spec loading, and sandbox
+    - Internal state management with proper lifecycle handling
+    - Supports all callbacks: `onHtmlGenerated`, `onError`, `onSaveComplete`, `onLoadComplete`
+    - Async API spec loading from URL
+    - Auto-refreshes saved items list
+    - Proper error handling with `ByofException`
+  - Created src/core/index.ts to export `createByof`
+  - Implements full `ByofInstance` interface:
+    - `destroy()` - Cleanup and remove UI
+    - `setApiSpec()` - Update API specification
+    - `setChatEndpoint()` - Update chat endpoint URL
+    - `setSaveEndpoint()` - Update save endpoint URL
+    - `saveCurrent()` - Save current UI state
+    - `loadSaved()` - Load a previously saved UI
+    - `reset()` - Reset to initial state
+  - Added 19 unit tests with jsdom environment (total 101 tests)
+  - Updated main index.ts to export `createByof` from core module
+  - Installed jsdom for DOM testing
+
 ## Pending Tasks
 
-- [ ] Task 08: Main Integration
 - [ ] Task 09: Example Frontend
 - [ ] Task 10: Example Backend
 
@@ -82,11 +102,12 @@
 
 ## Test Summary
 
-| Task             | Tests  |
-| ---------------- | ------ |
-| Spec Loader      | 11     |
-| Chat Client      | 8      |
-| Save/Load Client | 19     |
-| Sandbox CSP      | 21     |
-| Sandbox Runner   | 23     |
-| **Total**        | **82** |
+| Task             | Tests   |
+| ---------------- | ------- |
+| Spec Loader      | 11      |
+| Chat Client      | 8       |
+| Save/Load Client | 19      |
+| Sandbox CSP      | 21      |
+| Sandbox Runner   | 23      |
+| Core Integration | 19      |
+| **Total**        | **101** |

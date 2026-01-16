@@ -79,15 +79,5 @@ export type {
   IframeSandboxConfig,
 } from './sandbox'
 
-import type { ByofInitOptions, ByofInstance } from './types'
-
-/**
- * Create a BYOF instance
- *
- * @param options - Configuration options for the BYOF instance
- * @returns A BYOF instance with methods to control the UI
- */
-export function createByof(_options: ByofInitOptions): ByofInstance {
-  // Stub implementation - will be implemented in later tasks
-  throw new Error('Not implemented yet')
-}
+// Re-export main factory function
+export { createByof } from './core'
