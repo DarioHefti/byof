@@ -110,9 +110,30 @@
   - Clean, modern styling matching SDK theme
   - ES module import from dist folder
 
-## Pending Tasks
+- [x] Task 10: Example Backend
+  - Created examples/backend/package.json with dependencies (express, cors)
+  - Created examples/backend/server.js with complete API implementation:
+    - `POST /api/chat` - Generate HTML from chat messages (mock LLM)
+    - `POST /api/save` - Save a generated UI to in-memory store
+    - `POST /api/save/load` - Load a saved UI by ID
+    - `POST /api/save/list` - List saved UIs with optional projectId filter
+    - `GET /health` - Health check endpoint
+  - Mock HTML generation based on keywords:
+    - "dashboard" / "stats" -> Dashboard with stats grid and bar chart
+    - "form" / "input" -> Contact form with validation
+    - "table" / "list" / "data" -> User directory table
+    - "card" / "profile" -> Profile card with stats
+    - "chart" / "graph" -> Analytics view with charts
+    - Default -> Generic UI with request echo
+  - Features:
+    - In-memory storage for saved UIs
+    - CORS enabled for cross-origin requests
+    - Request logging for debugging
+    - Clean HTML templates with modern CSS
+    - Proper error handling and validation
+  - Updated frontend example with getting started instructions
 
-- [ ] Task 10: Example Backend
+## All Tasks Complete!
 
 ---
 
