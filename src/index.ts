@@ -40,11 +40,7 @@ export {
 export type { UIElements, UICallbacks, UIState, SavedItem } from './ui'
 
 // Re-export spec loader
-export {
-  loadSpecFromUrl,
-  normalizeSpec,
-  loadAndNormalizeSpec,
-} from './spec'
+export { loadSpecFromUrl, normalizeSpec, loadAndNormalizeSpec } from './spec'
 
 export type { NormalizedSpec, LoadSpecOptions } from './spec'
 
@@ -52,6 +48,11 @@ export type { NormalizedSpec, LoadSpecOptions } from './spec'
 export { sendChat } from './chat'
 
 export type { SendChatOptions } from './chat'
+
+// Re-export save/load client
+export { saveUI, loadUI, listSavedUIs } from './save'
+
+export type { SaveOptions, LoadOptions, ListOptions } from './save'
 
 import type { ByofInitOptions, ByofInstance } from './types'
 

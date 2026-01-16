@@ -43,10 +43,31 @@
   - Exported chat client from main index.ts
   - Updated ESLint config to relax rules in test files
 
+- [x] Task 06: Save/Load Client
+  - Created src/save/client.ts with saveUI, loadUI, and listSavedUIs functions
+  - All functions support timeout and AbortSignal for cancellation
+  - Validates responses with Zod schemas (saveResponseSchema, loadResponseSchema, listResponseSchema)
+  - Throws ByofException with SAVE_ERROR, LOAD_ERROR, or NETWORK_ERROR codes
+  - Created src/save/index.ts to export functions
+  - Added 19 unit tests (all passing, total 38 tests)
+  - Exported save client from main index.ts
+  - Follows exactOptionalPropertyTypes compliance for all optional fields
+
 ## Pending Tasks
 
-- [ ] Task 06: Save/Load Client
+- [ ] Task 07: Sandbox Runner
 - [ ] Task 07: Sandbox Runner
 - [ ] Task 08: Main Integration
 - [ ] Task 09: Example Frontend
 - [ ] Task 10: Example Backend
+
+---
+
+## Test Summary
+
+| Task             | Tests  |
+| ---------------- | ------ |
+| Spec Loader      | 11     |
+| Chat Client      | 8      |
+| Save/Load Client | 19     |
+| **Total**        | **38** |
