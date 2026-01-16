@@ -1,3 +1,7 @@
+Keep track of the tasks done in a file called: progress.md
+add a simple checklist that you will update after each task.
+
+
 I want you to strictly follow this best coding practices:
 
 Build small components based modular code.

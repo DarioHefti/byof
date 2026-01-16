@@ -21,6 +21,24 @@ export type {
   OpenApiSpecParsed,
 } from './schemas'
 
+// Re-export UI components (internal use, also available for advanced usage)
+export {
+  renderUI,
+  cleanupStyles,
+  createUIState,
+  updateUI,
+  appendMessage,
+  clearMessages,
+  showError,
+  clearError,
+  loadHtmlIntoSandbox,
+  clearSandbox,
+  toggleFullscreen,
+  styles,
+} from './ui'
+
+export type { UIElements, UICallbacks, UIState, SavedItem } from './ui'
+
 import type { ByofInitOptions, ByofInstance } from './types'
 
 /**
