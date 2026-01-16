@@ -60,6 +60,15 @@ BYOF is a framework-agnostic TypeScript library that provides a chat-based UI fo
 - **Sandbox Views**: Fullscreen toggle + open in new tab button
 - **Copy HTML**: No copy button
 
+### Code Quality (per AGENTS.md)
+- **Strict TypeScript**: `strict: true`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`
+- **Runtime Validation**: Use Zod for all external inputs (API responses)
+- **Observability**: Pluggable logger interface (`ByofLogger`) with structured logging
+- **Determinism**: Injectable `TimeProvider` for reproducible behavior in tests
+- **Error Types**: Typed error codes via const object (`ByofErrorCode`)
+- **ESLint Rules**: No floating promises, exhaustive switch, import order enforcement
+- **No `any`**: Use `unknown` and proper type narrowing
+
 ---
 
 ## Implementation Plan (TODOs)

@@ -27,12 +27,18 @@ Set up the foundational project structure with TypeScript, build tooling, and qu
 - `eslint`
 - `@typescript-eslint/eslint-plugin`
 - `@typescript-eslint/parser`
+- `eslint-plugin-import`
+- `eslint-import-resolver-typescript`
+- `eslint-config-prettier`
 - `prettier`
 - `vitest`
 - `concurrently` (for running multiple dev scripts)
 
+**Runtime dependencies:**
+- `zod` (for runtime validation of external inputs)
+
 ### 3. Create TypeScript config
-Create `tsconfig.json`:
+Create `tsconfig.json` with strict settings per AGENTS.md:
 ```json
 {
   "compilerOptions": {
@@ -41,6 +47,10 @@ Create `tsconfig.json`:
     "moduleResolution": "bundler",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -70,7 +80,68 @@ export default defineConfig({
 ```
 
 ### 5. Create ESLint config
-Create `.eslintrc.cjs` with TypeScript support.
+Create `.eslintrc.cjs` with TypeScript support and strict rules:
+
+```javascript
+module.exports = {
+  root: true,
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: './tsconfig.json',
+    ecmaVersion: 2020,
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint', 'import'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:import/recommended',
+    'plugin:import/typescript',
+    'prettier',
+  ],
+  rules: {
+    // No floating promises - must handle or explicitly void
+    '@typescript-eslint/no-floating-promises': 'error',
+    
+    // Exhaustive switch statements
+    '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    
+    // No any - use unknown instead
+    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-unsafe-assignment': 'error',
+    '@typescript-eslint/no-unsafe-member-access': 'error',
+    '@typescript-eslint/no-unsafe-call': 'error',
+    '@typescript-eslint/no-unsafe-return': 'error',
+    
+    // Import order
+    'import/order': [
+      'error',
+      {
+        'groups': [
+          'builtin',
+          'external',
+          'internal',
+          'parent',
+          'sibling',
+          'index',
+        ],
+        'newlines-between': 'always',
+        'alphabetize': { order: 'asc', caseInsensitive: true },
+      },
+    ],
+    
+    // No unused vars
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+  },
+  settings: {
+    'import/resolver': {
+      typescript: true,
+      node: true,
+    },
+  },
+}
+```
 
 ### 6. Create Prettier config
 Create `.prettierrc` with reasonable defaults.

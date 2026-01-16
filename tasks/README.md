@@ -43,6 +43,18 @@ These decisions were made during planning (see `plan.md` for full details):
 - **Layout**: Stacked (chat on top, sandbox below)
 - **Events**: Callback options pattern
 
+## Code Quality Requirements (per AGENTS.md)
+
+All tasks must follow these requirements:
+
+- **Strict TypeScript**: Use `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`
+- **Runtime Validation**: Use Zod for all external inputs (API responses, user data)
+- **Observability**: Use the pluggable `ByofLogger` interface (never `console.log` directly in library code)
+- **Determinism**: Use injectable `TimeProvider` instead of `Date.now()` directly
+- **Error Types**: Use `ByofErrorCode` const object for exhaustive error handling
+- **ESLint**: No floating promises, enforce import order, exhaustive switch statements
+- **No `any`**: Use `unknown` and proper type narrowing
+
 ## Testing Each Task
 
 After completing each task, verify:

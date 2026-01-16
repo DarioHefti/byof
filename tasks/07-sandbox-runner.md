@@ -140,7 +140,7 @@ export function generateCSPMetaTag(allowlist: string[]): string {
 Main sandbox runner:
 
 ```typescript
-import { ByofError } from '../types'
+import { ByofLogger, defaultLogger } from '../types'
 import { generateBridgeScript } from './bridge'
 import { generateCSPMetaTag } from './csp'
 
@@ -171,6 +171,10 @@ export interface SandboxCallbacks {
   onNavigate?: (payload: SandboxNavigatePayload) => void
 }
 
+export interface SandboxOptions {
+  logger?: ByofLogger
+}
+
 export interface SandboxRunner {
   iframe: HTMLIFrameElement
   load(html: string): void
@@ -188,13 +192,18 @@ export interface SandboxRunner {
  * @param container - Element to append the iframe to
  * @param allowlist - Allowed origins for API calls
  * @param callbacks - Callbacks for sandbox events
+ * @param options - Optional configuration including logger
  */
 export function createSandbox(
   container: HTMLElement,
   allowlist: string[],
-  callbacks: SandboxCallbacks
+  callbacks: SandboxCallbacks,
+  options: SandboxOptions = {}
 ): SandboxRunner {
+  const logger = options.logger ?? defaultLogger
   let currentHtml: string | null = null
+  
+  logger.debug('Creating sandbox', { allowlist })
   
   // Create iframe
   const iframe = document.createElement('iframe')
@@ -205,23 +214,31 @@ export function createSandbox(
   container.appendChild(iframe)
   
   // Listen for messages from iframe
-  const messageHandler = (event: MessageEvent) => {
+  const messageHandler = (event: MessageEvent<unknown>) => {
     // Only accept messages from our iframe
     if (event.source !== iframe.contentWindow) return
     
-    const data = event.data as SandboxMessage
+    const data = event.data as SandboxMessage | null
     if (!data || typeof data.type !== 'string') return
     
+    // Exhaustive switch for message types
     switch (data.type) {
       case 'byof:error':
+        logger.debug('Sandbox error received', { payload: data.payload })
         callbacks.onError?.(data.payload as SandboxErrorPayload)
         break
       case 'byof:resize':
         callbacks.onResize?.(data.payload as SandboxResizePayload)
         break
       case 'byof:navigate':
+        logger.debug('Sandbox navigation received', { payload: data.payload })
         callbacks.onNavigate?.(data.payload as SandboxNavigatePayload)
         break
+      default: {
+        // Exhaustive check - if we get here, we have an unhandled message type
+        const _exhaustive: never = data.type
+        logger.warn('Unknown sandbox message type', { type: _exhaustive })
+      }
     }
   }
   
@@ -231,21 +248,26 @@ export function createSandbox(
     iframe,
     
     load(html: string): void {
+      logger.debug('Loading HTML into sandbox', { htmlLength: html.length })
       currentHtml = html
       
       // Inject CSP and bridge script into HTML
       const processedHtml = injectIntoHtml(html, allowlist)
       iframe.srcdoc = processedHtml
+      logger.info('HTML loaded into sandbox')
     },
     
     clear(): void {
+      logger.debug('Clearing sandbox')
       currentHtml = null
       iframe.srcdoc = ''
     },
     
     destroy(): void {
+      logger.debug('Destroying sandbox')
       window.removeEventListener('message', messageHandler)
       iframe.remove()
+      logger.info('Sandbox destroyed')
     },
     
     getCurrentHtml(): string | null {
@@ -253,8 +275,12 @@ export function createSandbox(
     },
     
     openInNewTab(): void {
-      if (!currentHtml) return
+      if (!currentHtml) {
+        logger.warn('Cannot open in new tab: no HTML loaded')
+        return
+      }
       
+      logger.debug('Opening sandbox content in new tab')
       const blob = new Blob([currentHtml], { type: 'text/html' })
       const url = URL.createObjectURL(blob)
       window.open(url, '_blank')
@@ -263,12 +289,14 @@ export function createSandbox(
     },
     
     enterFullscreen(): void {
-      iframe.requestFullscreen?.()
+      logger.debug('Entering fullscreen')
+      void iframe.requestFullscreen?.()
     },
     
     exitFullscreen(): void {
       if (document.fullscreenElement === iframe) {
-        document.exitFullscreen?.()
+        logger.debug('Exiting fullscreen')
+        void document.exitFullscreen?.()
       }
     },
     

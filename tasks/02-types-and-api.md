@@ -55,6 +55,12 @@ export interface ByofInitOptions extends ByofCallbacks {
   userId?: string
   sandbox?: ByofSandboxOptions
   theme?: ByofTheme
+  
+  // Observability - pluggable logger
+  logger?: ByofLogger
+  
+  // Determinism - injectable time provider
+  timeProvider?: TimeProvider
 }
 ```
 
@@ -142,10 +148,60 @@ export type SavedByofRef = SaveResponse
 
 #### Error Types
 ```typescript
+export const ByofErrorCode = {
+  CHAT_ERROR: 'CHAT_ERROR',
+  SAVE_ERROR: 'SAVE_ERROR',
+  LOAD_ERROR: 'LOAD_ERROR',
+  SPEC_ERROR: 'SPEC_ERROR',
+  SANDBOX_ERROR: 'SANDBOX_ERROR',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+} as const
+
+export type ByofErrorCode = typeof ByofErrorCode[keyof typeof ByofErrorCode]
+
 export interface ByofError {
-  code: 'CHAT_ERROR' | 'SAVE_ERROR' | 'LOAD_ERROR' | 'SPEC_ERROR' | 'SANDBOX_ERROR' | 'NETWORK_ERROR'
+  code: ByofErrorCode
   message: string
   details?: unknown
+}
+```
+
+#### Logger Interface (Pluggable Observability)
+```typescript
+export interface ByofLogger {
+  debug(message: string, context?: Record<string, unknown>): void
+  info(message: string, context?: Record<string, unknown>): void
+  warn(message: string, context?: Record<string, unknown>): void
+  error(message: string, context?: Record<string, unknown>): void
+}
+
+// Default console logger
+export const defaultLogger: ByofLogger = {
+  debug: (msg, ctx) => console.debug(`[BYOF] ${msg}`, ctx ?? ''),
+  info: (msg, ctx) => console.info(`[BYOF] ${msg}`, ctx ?? ''),
+  warn: (msg, ctx) => console.warn(`[BYOF] ${msg}`, ctx ?? ''),
+  error: (msg, ctx) => console.error(`[BYOF] ${msg}`, ctx ?? ''),
+}
+
+// No-op logger for silent operation
+export const noopLogger: ByofLogger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+}
+```
+
+#### Time Provider (Injectable for Determinism)
+```typescript
+export interface TimeProvider {
+  now(): number
+  isoString(): string
+}
+
+export const defaultTimeProvider: TimeProvider = {
+  now: () => Date.now(),
+  isoString: () => new Date().toISOString(),
 }
 ```
 
@@ -167,6 +223,8 @@ export interface ByofInstance {
 ```typescript
 export * from './types'
 export { VERSION } from './version'
+export { defaultLogger, noopLogger } from './types'
+export { defaultTimeProvider } from './types'
 
 import type { ByofInitOptions, ByofInstance } from './types'
 
@@ -176,13 +234,80 @@ export function createByof(options: ByofInitOptions): ByofInstance {
 }
 ```
 
-### 3. Create `src/version.ts`
+### 3. Create Zod schemas for runtime validation
+
+Create `src/schemas.ts`:
+
+```typescript
+import { z } from 'zod'
+
+// Chat response validation
+export const chatResponseSchema = z.object({
+  html: z.string().min(1),
+  title: z.string().optional(),
+  warnings: z.array(z.string()).optional(),
+})
+
+export type ChatResponseParsed = z.infer<typeof chatResponseSchema>
+
+// Save response validation
+export const saveResponseSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().optional(),
+  updatedAt: z.string().optional(),
+})
+
+export type SaveResponseParsed = z.infer<typeof saveResponseSchema>
+
+// Load response validation
+export const loadResponseSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().optional(),
+  html: z.string().min(1),
+  messages: z.array(z.object({
+    role: z.string(),
+    content: z.string(),
+    ts: z.number(),
+  })).optional(),
+  apiSpec: z.string().optional(),
+  updatedAt: z.string().optional(),
+})
+
+export type LoadResponseParsed = z.infer<typeof loadResponseSchema>
+
+// List response validation
+export const listResponseSchema = z.object({
+  items: z.array(z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })),
+})
+
+export type ListResponseParsed = z.infer<typeof listResponseSchema>
+
+// OpenAPI spec validation (minimal)
+export const openApiSpecSchema = z.object({
+  openapi: z.string().optional(),
+  swagger: z.string().optional(),
+  paths: z.record(z.unknown()),
+}).refine(
+  (data) => data.openapi !== undefined || data.swagger !== undefined,
+  { message: 'API spec must have "openapi" or "swagger" version field' }
+)
+```
+
+### 4. Create `src/version.ts`
 ```typescript
 export const VERSION = '0.1.0'
 ```
 
 ## Acceptance Criteria
 - [ ] All types are defined in `src/types.ts`
+- [ ] Zod schemas are defined in `src/schemas.ts`
+- [ ] `ByofLogger` interface enables pluggable logging
+- [ ] `TimeProvider` interface enables injectable time
+- [ ] `ByofErrorCode` is a const object (not just string union) for exhaustive checking
 - [ ] Types are exported from `src/index.ts`
 - [ ] `npm run build` succeeds
 - [ ] Types are available in `dist/index.d.ts`

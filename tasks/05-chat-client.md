@@ -12,8 +12,12 @@ import {
   ChatRequest, 
   ChatResponse, 
   ByofError, 
-  ByofMessage 
+  ByofErrorCode,
+  ByofMessage,
+  ByofLogger,
+  defaultLogger,
 } from '../types'
+import { chatResponseSchema } from '../schemas'
 
 export interface SendChatOptions {
   endpoint: string
@@ -26,6 +30,7 @@ export interface SendChatOptions {
   allowedOrigins: string[]
   timeout?: number  // Default: 60000ms (1 minute)
   signal?: AbortSignal
+  logger?: ByofLogger
 }
 
 /**
@@ -42,7 +47,14 @@ export async function sendChat(options: SendChatOptions): Promise<ChatResponse> 
     allowedOrigins,
     timeout = 60000,
     signal,
+    logger = defaultLogger,
   } = options
+
+  logger.debug('Sending chat request', { 
+    endpoint, 
+    messageCount: messages.length,
+    allowedOrigins,
+  })
 
   // Create abort controller for timeout
   const controller = new AbortController()
@@ -77,28 +89,41 @@ export async function sendChat(options: SendChatOptions): Promise<ChatResponse> 
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '')
+      logger.error('Chat request HTTP error', { 
+        status: response.status, 
+        statusText: response.statusText,
+      })
       throw createChatError(
         `Chat request failed: ${response.status} ${response.statusText}`,
         { status: response.status, body: errorText }
       )
     }
 
-    const data = await response.json()
+    const data: unknown = await response.json()
     
-    // Validate response structure
-    if (!data.html || typeof data.html !== 'string') {
-      throw createChatError('Invalid response: missing html field')
+    // Validate response with Zod schema
+    const parseResult = chatResponseSchema.safeParse(data)
+    
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ')
+      logger.error('Invalid chat response', { errors: parseResult.error.errors })
+      throw createChatError(`Invalid response: ${errorMessage}`, parseResult.error)
     }
 
-    return {
-      html: data.html,
-      title: data.title,
-      warnings: data.warnings,
-    }
-  } catch (error) {
+    logger.info('Chat response received', { 
+      htmlLength: parseResult.data.html.length,
+      title: parseResult.data.title,
+      warningCount: parseResult.data.warnings?.length ?? 0,
+    })
+
+    return parseResult.data
+  } catch (error: unknown) {
     clearTimeout(timeoutId)
     
     if (error instanceof Error && error.name === 'AbortError') {
+      logger.warn('Chat request aborted or timed out')
       throw createNetworkError('Chat request timed out or was aborted')
     }
     
@@ -106,6 +131,7 @@ export async function sendChat(options: SendChatOptions): Promise<ChatResponse> 
       throw error
     }
     
+    logger.error('Chat request failed', { error })
     throw createNetworkError('Chat request failed', error)
   }
 }
@@ -122,7 +148,7 @@ function combineAbortSignals(signal1: AbortSignal, signal2: AbortSignal): AbortS
 
 function createChatError(message: string, details?: unknown): ByofError {
   return {
-    code: 'CHAT_ERROR',
+    code: ByofErrorCode.CHAT_ERROR,
     message,
     details,
   }
@@ -130,7 +156,7 @@ function createChatError(message: string, details?: unknown): ByofError {
 
 function createNetworkError(message: string, details?: unknown): ByofError {
   return {
-    code: 'NETWORK_ERROR',
+    code: ByofErrorCode.NETWORK_ERROR,
     message,
     details,
   }
@@ -156,7 +182,13 @@ export * from './client'
 
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+import { noopLogger } from '../types'
+
 import { sendChat } from './client'
+
+// Use noop logger in tests to avoid console noise
+const testLogger = noopLogger
 
 describe('sendChat', () => {
   beforeEach(() => {
@@ -181,6 +213,7 @@ describe('sendChat', () => {
       messages: [{ role: 'user', content: 'Hello', ts: Date.now() }],
       apiSpec: '{"openapi":"3.0.0","paths":{}}',
       allowedOrigins: ['https://api.example.com'],
+      logger: testLogger,
     })
 
     expect(result.html).toBe('<html></html>')
@@ -207,12 +240,13 @@ describe('sendChat', () => {
       messages: [],
       apiSpec: '{}',
       allowedOrigins: [],
+      logger: testLogger,
     })).rejects.toMatchObject({
       code: 'CHAT_ERROR',
     })
   })
 
-  it('should throw CHAT_ERROR on invalid response', async () => {
+  it('should throw CHAT_ERROR on invalid response (Zod validation)', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ notHtml: true }),
@@ -223,9 +257,27 @@ describe('sendChat', () => {
       messages: [],
       apiSpec: '{}',
       allowedOrigins: [],
+      logger: testLogger,
     })).rejects.toMatchObject({
       code: 'CHAT_ERROR',
-      message: expect.stringContaining('missing html'),
+      message: expect.stringContaining('Invalid response'),
+    })
+  })
+
+  it('should throw CHAT_ERROR when html is empty string', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ html: '' }),
+    })
+
+    await expect(sendChat({
+      endpoint: 'https://api.example.com/chat',
+      messages: [],
+      apiSpec: '{}',
+      allowedOrigins: [],
+      logger: testLogger,
+    })).rejects.toMatchObject({
+      code: 'CHAT_ERROR',
     })
   })
 
@@ -242,6 +294,7 @@ describe('sendChat', () => {
       apiSpec: '{}',
       allowedOrigins: [],
       timeout: 50,
+      logger: testLogger,
     })
 
     vi.advanceTimersByTime(100)
@@ -260,6 +313,7 @@ describe('sendChat', () => {
       messages: [],
       apiSpec: '{}',
       allowedOrigins: [],
+      logger: testLogger,
     })).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
     })
@@ -282,6 +336,7 @@ describe('sendChat', () => {
       apiSpec: '{}',
       allowedOrigins: [],
       signal: controller.signal,
+      logger: testLogger,
     })
 
     controller.abort()
@@ -297,9 +352,11 @@ describe('sendChat', () => {
 - [ ] `sendChat` sends properly formatted POST request
 - [ ] Request includes messages, apiSpec, context, and instructions
 - [ ] Returns `ChatResponse` with html, title, warnings
+- [ ] Response is validated with Zod schema
 - [ ] Throws `ByofError` with code `CHAT_ERROR` on HTTP errors
 - [ ] Throws `ByofError` with code `CHAT_ERROR` on invalid response
 - [ ] Throws `ByofError` with code `NETWORK_ERROR` on timeout
 - [ ] Throws `ByofError` with code `NETWORK_ERROR` on fetch failure
 - [ ] Supports external abort signal
+- [ ] Supports pluggable logger via options
 - [ ] All unit tests pass

@@ -14,8 +14,15 @@ import {
   LoadResponse,
   ListResponse,
   ByofError,
+  ByofErrorCode,
   ByofMessage,
+  ByofLogger,
+  defaultLogger,
+  TimeProvider,
+  defaultTimeProvider,
 } from '../types'
+import { VERSION } from '../version'
+import { saveResponseSchema, loadResponseSchema, listResponseSchema } from '../schemas'
 
 export interface SaveByofOptions {
   endpoint: string  // Base save endpoint URL
@@ -28,18 +35,22 @@ export interface SaveByofOptions {
     userId?: string
   }
   timeout?: number  // Default: 30000ms
+  logger?: ByofLogger
+  timeProvider?: TimeProvider  // Injectable for determinism
 }
 
 export interface LoadByofOptions {
   endpoint: string
   id: string
   timeout?: number
+  logger?: ByofLogger
 }
 
 export interface ListByofsOptions {
   endpoint: string
   projectId?: string
   timeout?: number
+  logger?: ByofLogger
 }
 
 /**
@@ -48,7 +59,19 @@ export interface ListByofsOptions {
  * @throws ByofError with code 'SAVE_ERROR' or 'NETWORK_ERROR'
  */
 export async function saveByof(options: SaveByofOptions): Promise<SaveResponse> {
-  const { endpoint, name, html, messages, apiSpec, context, timeout = 30000 } = options
+  const { 
+    endpoint, 
+    name, 
+    html, 
+    messages, 
+    apiSpec, 
+    context, 
+    timeout = 30000,
+    logger = defaultLogger,
+    timeProvider = defaultTimeProvider,
+  } = options
+
+  logger.debug('Saving BYOF', { endpoint, name, htmlLength: html.length })
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -61,8 +84,8 @@ export async function saveByof(options: SaveByofOptions): Promise<SaveResponse> 
       apiSpec,
       context,
       meta: {
-        createdAt: new Date().toISOString(),
-        byofVersion: VERSION, // Import from version.ts
+        createdAt: timeProvider.isoString(),
+        byofVersion: VERSION,
       },
     }
 
@@ -79,27 +102,34 @@ export async function saveByof(options: SaveByofOptions): Promise<SaveResponse> 
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '')
+      logger.error('Save HTTP error', { status: response.status })
       throw createSaveError(
         `Save failed: ${response.status} ${response.statusText}`,
         { status: response.status, body: errorText }
       )
     }
 
-    const data = await response.json()
+    const data: unknown = await response.json()
 
-    if (!data.id) {
-      throw createSaveError('Invalid response: missing id field')
+    // Validate response with Zod schema
+    const parseResult = saveResponseSchema.safeParse(data)
+    
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ')
+      logger.error('Invalid save response', { errors: parseResult.error.errors })
+      throw createSaveError(`Invalid response: ${errorMessage}`, parseResult.error)
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      updatedAt: data.updatedAt,
-    }
-  } catch (error) {
+    logger.info('BYOF saved successfully', { id: parseResult.data.id })
+
+    return parseResult.data
+  } catch (error: unknown) {
     clearTimeout(timeoutId)
     
     if (error instanceof Error && error.name === 'AbortError') {
+      logger.warn('Save request timed out')
       throw createNetworkError('Save request timed out')
     }
     
@@ -107,6 +137,7 @@ export async function saveByof(options: SaveByofOptions): Promise<SaveResponse> 
       throw error
     }
     
+    logger.error('Save request failed', { error })
     throw createNetworkError('Save request failed', error)
   }
 }
@@ -117,7 +148,9 @@ export async function saveByof(options: SaveByofOptions): Promise<SaveResponse> 
  * @throws ByofError with code 'LOAD_ERROR' or 'NETWORK_ERROR'
  */
 export async function loadByof(options: LoadByofOptions): Promise<LoadResponse> {
-  const { endpoint, id, timeout = 30000 } = options
+  const { endpoint, id, timeout = 30000, logger = defaultLogger } = options
+
+  logger.debug('Loading BYOF', { endpoint, id })
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -135,33 +168,38 @@ export async function loadByof(options: LoadByofOptions): Promise<LoadResponse> 
 
     if (!response.ok) {
       if (response.status === 404) {
+        logger.warn('BYOF not found', { id })
         throw createLoadError(`Saved item not found: ${id}`)
       }
       const errorText = await response.text().catch(() => '')
+      logger.error('Load HTTP error', { status: response.status })
       throw createLoadError(
         `Load failed: ${response.status} ${response.statusText}`,
         { status: response.status, body: errorText }
       )
     }
 
-    const data = await response.json()
+    const data: unknown = await response.json()
 
-    if (!data.id || !data.html) {
-      throw createLoadError('Invalid response: missing required fields')
+    // Validate response with Zod schema
+    const parseResult = loadResponseSchema.safeParse(data)
+    
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ')
+      logger.error('Invalid load response', { errors: parseResult.error.errors })
+      throw createLoadError(`Invalid response: ${errorMessage}`, parseResult.error)
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      html: data.html,
-      messages: data.messages,
-      apiSpec: data.apiSpec,
-      updatedAt: data.updatedAt,
-    }
-  } catch (error) {
+    logger.info('BYOF loaded successfully', { id, htmlLength: parseResult.data.html.length })
+
+    return parseResult.data
+  } catch (error: unknown) {
     clearTimeout(timeoutId)
     
     if (error instanceof Error && error.name === 'AbortError') {
+      logger.warn('Load request timed out')
       throw createNetworkError('Load request timed out')
     }
     
@@ -169,6 +207,7 @@ export async function loadByof(options: LoadByofOptions): Promise<LoadResponse> 
       throw error
     }
     
+    logger.error('Load request failed', { error })
     throw createNetworkError('Load request failed', error)
   }
 }
@@ -179,7 +218,9 @@ export async function loadByof(options: LoadByofOptions): Promise<LoadResponse> 
  * @throws ByofError with code 'LOAD_ERROR' or 'NETWORK_ERROR'
  */
 export async function listByofs(options: ListByofsOptions): Promise<ListResponse> {
-  const { endpoint, projectId, timeout = 30000 } = options
+  const { endpoint, projectId, timeout = 30000, logger = defaultLogger } = options
+
+  logger.debug('Listing BYOFs', { endpoint, projectId })
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -199,29 +240,34 @@ export async function listByofs(options: ListByofsOptions): Promise<ListResponse
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '')
+      logger.error('List HTTP error', { status: response.status })
       throw createLoadError(
         `List failed: ${response.status} ${response.statusText}`,
         { status: response.status, body: errorText }
       )
     }
 
-    const data = await response.json()
+    const data: unknown = await response.json()
 
-    if (!Array.isArray(data.items)) {
-      throw createLoadError('Invalid response: missing items array')
+    // Validate response with Zod schema
+    const parseResult = listResponseSchema.safeParse(data)
+    
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ')
+      logger.error('Invalid list response', { errors: parseResult.error.errors })
+      throw createLoadError(`Invalid response: ${errorMessage}`, parseResult.error)
     }
 
-    return {
-      items: data.items.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        updatedAt: item.updatedAt,
-      })),
-    }
-  } catch (error) {
+    logger.info('BYOFs listed successfully', { count: parseResult.data.items.length })
+
+    return parseResult.data
+  } catch (error: unknown) {
     clearTimeout(timeoutId)
     
     if (error instanceof Error && error.name === 'AbortError') {
+      logger.warn('List request timed out')
       throw createNetworkError('List request timed out')
     }
     
@@ -229,20 +275,21 @@ export async function listByofs(options: ListByofsOptions): Promise<ListResponse
       throw error
     }
     
+    logger.error('List request failed', { error })
     throw createNetworkError('List request failed', error)
   }
 }
 
 function createSaveError(message: string, details?: unknown): ByofError {
-  return { code: 'SAVE_ERROR', message, details }
+  return { code: ByofErrorCode.SAVE_ERROR, message, details }
 }
 
 function createLoadError(message: string, details?: unknown): ByofError {
-  return { code: 'LOAD_ERROR', message, details }
+  return { code: ByofErrorCode.LOAD_ERROR, message, details }
 }
 
 function createNetworkError(message: string, details?: unknown): ByofError {
-  return { code: 'NETWORK_ERROR', message, details }
+  return { code: ByofErrorCode.NETWORK_ERROR, message, details }
 }
 
 function isByofError(error: unknown): error is ByofError {
@@ -264,8 +311,20 @@ export * from './client'
 ### 3. Add unit tests in `src/save/client.test.ts`
 
 ```typescript
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+
+import { noopLogger, TimeProvider } from '../types'
+
 import { saveByof, loadByof, listByofs } from './client'
+
+// Use noop logger in tests to avoid console noise
+const testLogger = noopLogger
+
+// Mock time provider for deterministic tests
+const mockTimeProvider: TimeProvider = {
+  now: () => 1704067200000, // 2024-01-01T00:00:00.000Z
+  isoString: () => '2024-01-01T00:00:00.000Z',
+}
 
 describe('saveByof', () => {
   afterEach(() => {
@@ -282,6 +341,8 @@ describe('saveByof', () => {
       endpoint: 'https://api.example.com/byof',
       html: '<html></html>',
       name: 'Test',
+      logger: testLogger,
+      timeProvider: mockTimeProvider,
     })
 
     expect(result.id).toBe('abc123')
@@ -290,6 +351,24 @@ describe('saveByof', () => {
       'https://api.example.com/byof/save',
       expect.objectContaining({ method: 'POST' })
     )
+  })
+
+  it('should use injected timeProvider for createdAt', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'abc123' }),
+    })
+
+    await saveByof({
+      endpoint: 'https://api.example.com/byof',
+      html: '<html></html>',
+      logger: testLogger,
+      timeProvider: mockTimeProvider,
+    })
+
+    const fetchCall = vi.mocked(global.fetch).mock.calls[0]
+    const body = JSON.parse(fetchCall?.[1]?.body as string) as Record<string, unknown>
+    expect(body.meta).toMatchObject({ createdAt: '2024-01-01T00:00:00.000Z' })
   })
 
   it('should throw SAVE_ERROR on HTTP error', async () => {
@@ -303,10 +382,11 @@ describe('saveByof', () => {
     await expect(saveByof({
       endpoint: 'https://api.example.com/byof',
       html: '<html></html>',
+      logger: testLogger,
     })).rejects.toMatchObject({ code: 'SAVE_ERROR' })
   })
 
-  it('should throw SAVE_ERROR on invalid response', async () => {
+  it('should throw SAVE_ERROR on invalid response (Zod validation)', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ noId: true }),
@@ -315,9 +395,10 @@ describe('saveByof', () => {
     await expect(saveByof({
       endpoint: 'https://api.example.com/byof',
       html: '<html></html>',
+      logger: testLogger,
     })).rejects.toMatchObject({
       code: 'SAVE_ERROR',
-      message: expect.stringContaining('missing id'),
+      message: expect.stringContaining('Invalid response'),
     })
   })
 })
@@ -340,6 +421,7 @@ describe('loadByof', () => {
     const result = await loadByof({
       endpoint: 'https://api.example.com/byof',
       id: 'abc123',
+      logger: testLogger,
     })
 
     expect(result.id).toBe('abc123')
@@ -361,9 +443,26 @@ describe('loadByof', () => {
     await expect(loadByof({
       endpoint: 'https://api.example.com/byof',
       id: 'notfound',
+      logger: testLogger,
     })).rejects.toMatchObject({
       code: 'LOAD_ERROR',
       message: expect.stringContaining('not found'),
+    })
+  })
+
+  it('should throw LOAD_ERROR on invalid response (Zod validation)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'abc', noHtml: true }),
+    })
+
+    await expect(loadByof({
+      endpoint: 'https://api.example.com/byof',
+      id: 'abc',
+      logger: testLogger,
+    })).rejects.toMatchObject({
+      code: 'LOAD_ERROR',
+      message: expect.stringContaining('Invalid response'),
     })
   })
 })
@@ -386,10 +485,11 @@ describe('listByofs', () => {
 
     const result = await listByofs({
       endpoint: 'https://api.example.com/byof',
+      logger: testLogger,
     })
 
     expect(result.items).toHaveLength(2)
-    expect(result.items[0].id).toBe('1')
+    expect(result.items[0]?.id).toBe('1')
   })
 
   it('should include projectId in query', async () => {
@@ -401,6 +501,7 @@ describe('listByofs', () => {
     await listByofs({
       endpoint: 'https://api.example.com/byof',
       projectId: 'proj123',
+      logger: testLogger,
     })
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -409,7 +510,7 @@ describe('listByofs', () => {
     )
   })
 
-  it('should throw LOAD_ERROR on invalid response', async () => {
+  it('should throw LOAD_ERROR on invalid response (Zod validation)', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ notItems: true }),
@@ -417,9 +518,10 @@ describe('listByofs', () => {
 
     await expect(listByofs({
       endpoint: 'https://api.example.com/byof',
+      logger: testLogger,
     })).rejects.toMatchObject({
       code: 'LOAD_ERROR',
-      message: expect.stringContaining('missing items'),
+      message: expect.stringContaining('Invalid response'),
     })
   })
 })
@@ -428,10 +530,13 @@ describe('listByofs', () => {
 ## Acceptance Criteria
 - [ ] `saveByof` sends POST to `{endpoint}/save` with correct payload
 - [ ] `saveByof` returns `SaveResponse` with id
+- [ ] `saveByof` uses injectable `TimeProvider` for deterministic timestamps
 - [ ] `loadByof` sends GET to `{endpoint}/load?id=...`
 - [ ] `loadByof` returns `LoadResponse` with html and metadata
 - [ ] `listByofs` sends GET to `{endpoint}/list`
 - [ ] `listByofs` returns `ListResponse` with items array
+- [ ] All responses are validated with Zod schemas
 - [ ] All functions throw appropriate `ByofError` on failures
 - [ ] All functions support timeout
+- [ ] All functions support pluggable logger
 - [ ] All unit tests pass

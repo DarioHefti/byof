@@ -14,7 +14,12 @@ import {
   ByofInstance,
   ByofMessage,
   ByofError,
+  ByofErrorCode,
   SavedByofRef,
+  ByofLogger,
+  defaultLogger,
+  TimeProvider,
+  defaultTimeProvider,
 } from '../types'
 import { VERSION } from '../version'
 import { renderUI, UIElements, UICallbacks } from '../ui/render'
@@ -31,21 +36,32 @@ interface ByofCore {
   sandbox: SandboxRunner
   apiSpec: string | null
   abortController: AbortController | null
+  logger: ByofLogger
+  timeProvider: TimeProvider
 }
 
 export function createByofInstance(options: ByofInitOptions): ByofInstance {
   // Validate required options
   validateOptions(options)
   
+  // Get logger and time provider (with defaults for determinism)
+  const logger = options.logger ?? defaultLogger
+  const timeProvider = options.timeProvider ?? defaultTimeProvider
+  
+  logger.info('Creating BYOF instance', { 
+    chatEndpoint: options.chatEndpoint,
+    saveEndpoint: options.saveEndpoint,
+  })
+  
   // Initialize state
   const state = createUIState()
   
-  // Set up UI callbacks
+  // Set up UI callbacks (core is defined below, referenced via closure)
   const uiCallbacks: UICallbacks = {
-    onSend: (message) => handleSend(core, message),
+    onSend: (message) => void handleSend(core, message),
     onReset: () => handleReset(core),
-    onSave: (name) => handleSave(core, name),
-    onLoad: (id) => handleLoad(core, id),
+    onSave: (name) => void handleSave(core, name),
+    onLoad: (id) => void handleLoad(core, id),
     onFullscreen: () => handleFullscreen(core),
     onNewTab: () => handleNewTab(core),
   }
@@ -56,12 +72,13 @@ export function createByofInstance(options: ByofInitOptions): ByofInstance {
   // Create sandbox
   const sandbox = createSandbox(
     ui.sandboxContainer,
-    options.sandbox?.allowlist || [],
+    options.sandbox?.allowlist ?? [],
     {
       onError: (error) => handleSandboxError(core, error),
       onResize: (payload) => handleSandboxResize(core, payload),
       onNavigate: (payload) => handleSandboxNavigate(core, payload),
-    }
+    },
+    { logger }
   )
   
   // Core instance
@@ -72,10 +89,12 @@ export function createByofInstance(options: ByofInitOptions): ByofInstance {
     sandbox,
     apiSpec: null,
     abortController: null,
+    logger,
+    timeProvider,
   }
   
-  // Initialize
-  initialize(core)
+  // Initialize (fire-and-forget is intentional here, errors handled internally)
+  void initialize(core)
   
   // Return public API
   return {
@@ -102,14 +121,20 @@ function validateOptions(options: ByofInitOptions): void {
 }
 
 async function initialize(core: ByofCore): Promise<void> {
+  core.logger.debug('Initializing BYOF instance')
+  
   try {
     // Load API spec
     if (core.options.apiSpecUrl) {
-      const specText = await loadSpecFromUrl(core.options.apiSpecUrl)
-      const normalized = normalizeSpec(specText)
+      const specText = await loadSpecFromUrl(core.options.apiSpecUrl, { 
+        logger: core.logger,
+      })
+      const normalized = normalizeSpec(specText, { logger: core.logger })
       core.apiSpec = normalized.rawText
     } else if (core.options.apiSpec) {
-      const normalized = normalizeSpec(core.options.apiSpec)
+      const normalized = normalizeSpec(core.options.apiSpec, { 
+        logger: core.logger,
+      })
       core.apiSpec = normalized.rawText
     }
     
@@ -117,22 +142,26 @@ async function initialize(core: ByofCore): Promise<void> {
     if (core.options.saveEndpoint) {
       await refreshSavedList(core)
     }
-  } catch (error) {
+    
+    core.logger.info('BYOF instance initialized successfully')
+  } catch (error: unknown) {
     handleError(core, error as ByofError)
   }
 }
 
 async function handleSend(core: ByofCore, messageContent: string): Promise<void> {
   if (!core.apiSpec) {
-    handleError(core, { code: 'SPEC_ERROR', message: 'API spec not loaded' })
+    handleError(core, { code: ByofErrorCode.SPEC_ERROR, message: 'API spec not loaded' })
     return
   }
   
-  // Add user message
+  core.logger.debug('Handling send', { messageLength: messageContent.length })
+  
+  // Add user message (use injectable time provider)
   const userMessage: ByofMessage = {
     role: 'user',
     content: messageContent,
-    ts: Date.now(),
+    ts: core.timeProvider.now(),
   }
   core.state.messages.push(userMessage)
   core.state.isLoading = true
@@ -151,15 +180,16 @@ async function handleSend(core: ByofCore, messageContent: string): Promise<void>
         projectId: core.options.projectId,
         userId: core.options.userId,
       },
-      allowedOrigins: core.options.sandbox?.allowlist || [],
+      allowedOrigins: core.options.sandbox?.allowlist ?? [],
       signal: core.abortController.signal,
+      logger: core.logger,
     })
     
-    // Add assistant message
+    // Add assistant message (use injectable time provider)
     const assistantMessage: ByofMessage = {
       role: 'assistant',
-      content: response.title || 'Generated UI',
-      ts: Date.now(),
+      content: response.title ?? 'Generated UI',
+      ts: core.timeProvider.now(),
     }
     core.state.messages.push(assistantMessage)
     
@@ -173,11 +203,11 @@ async function handleSend(core: ByofCore, messageContent: string): Promise<void>
     // Call callback
     core.options.onHtmlGenerated?.(response.html, response.title)
     
-    // Show warnings if any
-    if (response.warnings?.length) {
-      console.warn('BYOF warnings:', response.warnings)
+    // Log warnings if any
+    if (response.warnings && response.warnings.length > 0) {
+      core.logger.warn('BYOF warnings from chat response', { warnings: response.warnings })
     }
-  } catch (error) {
+  } catch (error: unknown) {
     handleError(core, error as ByofError)
   } finally {
     core.state.isLoading = false
@@ -187,6 +217,8 @@ async function handleSend(core: ByofCore, messageContent: string): Promise<void>
 }
 
 function handleReset(core: ByofCore): void {
+  core.logger.debug('Resetting BYOF instance')
+  
   // Abort any pending request
   core.abortController?.abort()
   core.abortController = null
@@ -203,18 +235,22 @@ function handleReset(core: ByofCore): void {
   
   // Update UI
   updateUI(core.ui, core.state)
+  
+  core.logger.info('BYOF instance reset')
 }
 
 async function handleSave(core: ByofCore, name: string): Promise<void> {
   if (!core.options.saveEndpoint) {
-    handleError(core, { code: 'SAVE_ERROR', message: 'Save endpoint not configured' })
+    handleError(core, { code: ByofErrorCode.SAVE_ERROR, message: 'Save endpoint not configured' })
     return
   }
   
   if (!core.state.currentHtml) {
-    handleError(core, { code: 'SAVE_ERROR', message: 'Nothing to save' })
+    handleError(core, { code: ByofErrorCode.SAVE_ERROR, message: 'Nothing to save' })
     return
   }
+  
+  core.logger.debug('Handling save', { name })
   
   core.state.isLoading = true
   updateUI(core.ui, core.state)
@@ -225,11 +261,13 @@ async function handleSave(core: ByofCore, name: string): Promise<void> {
       name: name || undefined,
       html: core.state.currentHtml,
       messages: core.state.messages,
-      apiSpec: core.apiSpec || undefined,
+      apiSpec: core.apiSpec ?? undefined,
       context: {
         projectId: core.options.projectId,
         userId: core.options.userId,
       },
+      logger: core.logger,
+      timeProvider: core.timeProvider,
     })
     
     core.state.lastSavedId = result.id
@@ -240,7 +278,7 @@ async function handleSave(core: ByofCore, name: string): Promise<void> {
     
     // Call callback
     core.options.onSaveComplete?.(result)
-  } catch (error) {
+  } catch (error: unknown) {
     handleError(core, error as ByofError)
   } finally {
     core.state.isLoading = false
@@ -250,9 +288,11 @@ async function handleSave(core: ByofCore, name: string): Promise<void> {
 
 async function handleLoad(core: ByofCore, id: string): Promise<void> {
   if (!core.options.saveEndpoint) {
-    handleError(core, { code: 'LOAD_ERROR', message: 'Save endpoint not configured' })
+    handleError(core, { code: ByofErrorCode.LOAD_ERROR, message: 'Save endpoint not configured' })
     return
   }
+  
+  core.logger.debug('Handling load', { id })
   
   core.state.isLoading = true
   updateUI(core.ui, core.state)
@@ -261,11 +301,12 @@ async function handleLoad(core: ByofCore, id: string): Promise<void> {
     const result = await loadByof({
       endpoint: core.options.saveEndpoint,
       id,
+      logger: core.logger,
     })
     
     // Restore state
     core.state.currentHtml = result.html
-    core.state.messages = result.messages || []
+    core.state.messages = result.messages ?? []
     core.state.lastSavedId = result.id
     core.state.isDirty = false
     
@@ -279,7 +320,7 @@ async function handleLoad(core: ByofCore, id: string): Promise<void> {
     
     // Call callback
     core.options.onLoadComplete?.(result)
-  } catch (error) {
+  } catch (error: unknown) {
     handleError(core, error as ByofError)
   } finally {
     core.state.isLoading = false
@@ -294,12 +335,13 @@ async function refreshSavedList(core: ByofCore): Promise<void> {
     const result = await listByofs({
       endpoint: core.options.saveEndpoint,
       projectId: core.options.projectId,
+      logger: core.logger,
     })
     core.state.savedItems = result.items
     updateUI(core.ui, core.state)
-  } catch (error) {
+  } catch (error: unknown) {
     // Non-fatal - just log
-    console.warn('Failed to load saved items list:', error)
+    core.logger.warn('Failed to load saved items list', { error })
   }
 }
 
@@ -315,10 +357,11 @@ function handleNewTab(core: ByofCore): void {
   core.sandbox.openInNewTab()
 }
 
-function handleSandboxError(core: ByofCore, error: any): void {
+function handleSandboxError(core: ByofCore, error: unknown): void {
+  const errorObj = error as { message?: string }
   const byofError: ByofError = {
-    code: 'SANDBOX_ERROR',
-    message: error.message || 'Sandbox error',
+    code: ByofErrorCode.SANDBOX_ERROR,
+    message: errorObj.message ?? 'Sandbox error',
     details: error,
   }
   handleError(core, byofError)
@@ -327,47 +370,55 @@ function handleSandboxError(core: ByofCore, error: any): void {
 function handleSandboxResize(core: ByofCore, payload: { height: number }): void {
   // Could adjust iframe height if needed
   // For now, let CSS handle it
+  core.logger.debug('Sandbox resize', { height: payload.height })
 }
 
 function handleSandboxNavigate(core: ByofCore, payload: { url: string }): void {
   // Log navigation attempts from sandbox
-  console.log('Sandbox navigation intercepted:', payload.url)
+  core.logger.info('Sandbox navigation intercepted', { url: payload.url })
 }
 
 function handleError(core: ByofCore, error: ByofError): void {
+  core.logger.error('BYOF error', { code: error.code, message: error.message })
   core.state.error = error.message
   updateUI(core.ui, core.state)
   core.options.onError?.(error)
 }
 
 function destroy(core: ByofCore): void {
+  core.logger.debug('Destroying BYOF instance')
   core.abortController?.abort()
   core.sandbox.destroy()
   core.ui.container.remove()
+  core.logger.info('BYOF instance destroyed')
 }
 
 function setApiSpec(core: ByofCore, spec: string): void {
-  const normalized = normalizeSpec(spec)
+  const normalized = normalizeSpec(spec, { logger: core.logger })
   core.apiSpec = normalized.rawText
 }
 
 function setChatEndpoint(core: ByofCore, url: string): void {
+  core.logger.debug('Setting chat endpoint', { url })
   core.options.chatEndpoint = url
 }
 
 function setSaveEndpoint(core: ByofCore, url: string): void {
+  core.logger.debug('Setting save endpoint', { url })
   core.options.saveEndpoint = url
-  refreshSavedList(core)
+  void refreshSavedList(core)
 }
 
 async function saveCurrent(core: ByofCore, name?: string): Promise<SavedByofRef> {
   // This is the programmatic API version
   if (!core.options.saveEndpoint) {
-    throw { code: 'SAVE_ERROR', message: 'Save endpoint not configured' } as ByofError
+    const error: ByofError = { code: ByofErrorCode.SAVE_ERROR, message: 'Save endpoint not configured' }
+    throw error
   }
   
   if (!core.state.currentHtml) {
-    throw { code: 'SAVE_ERROR', message: 'Nothing to save' } as ByofError
+    const error: ByofError = { code: ByofErrorCode.SAVE_ERROR, message: 'Nothing to save' }
+    throw error
   }
   
   const result = await saveByof({
@@ -375,11 +426,13 @@ async function saveCurrent(core: ByofCore, name?: string): Promise<SavedByofRef>
     name,
     html: core.state.currentHtml,
     messages: core.state.messages,
-    apiSpec: core.apiSpec || undefined,
+    apiSpec: core.apiSpec ?? undefined,
     context: {
       projectId: core.options.projectId,
       userId: core.options.userId,
     },
+    logger: core.logger,
+    timeProvider: core.timeProvider,
   })
   
   core.state.lastSavedId = result.id

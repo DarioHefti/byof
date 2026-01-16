@@ -8,20 +8,35 @@ Implement the API spec loading and normalization module that handles JSON OpenAP
 ### 1. Create `src/spec/loader.ts`
 
 ```typescript
-import { ByofError } from '../types'
+import { z } from 'zod'
+
+import { ByofError, ByofErrorCode, ByofLogger, defaultLogger } from '../types'
+import { openApiSpecSchema } from '../schemas'
 
 export interface NormalizedSpec {
   rawText: string
-  json: object
+  json: z.infer<typeof openApiSpecSchema>
+}
+
+export interface LoadSpecOptions {
+  logger?: ByofLogger
 }
 
 /**
  * Load an API spec from a URL
  * @param url - URL to fetch the JSON spec from
+ * @param options - Optional configuration including logger
  * @returns Promise resolving to the spec as a string
  * @throws ByofError with code 'SPEC_ERROR' on failure
  */
-export async function loadSpecFromUrl(url: string): Promise<string> {
+export async function loadSpecFromUrl(
+  url: string,
+  options: LoadSpecOptions = {}
+): Promise<string> {
+  const logger = options.logger ?? defaultLogger
+  
+  logger.debug('Loading spec from URL', { url })
+  
   try {
     const response = await fetch(url)
     
@@ -30,60 +45,63 @@ export async function loadSpecFromUrl(url: string): Promise<string> {
     }
     
     const text = await response.text()
+    logger.info('Spec loaded successfully', { url, length: text.length })
     return text
-  } catch (error) {
+  } catch (error: unknown) {
+    logger.error('Failed to load spec', { url, error })
     throw createSpecError(`Failed to load spec from ${url}`, error)
   }
 }
 
 /**
- * Normalize and validate a raw API spec string
+ * Normalize and validate a raw API spec string using Zod
  * @param raw - Raw JSON string
+ * @param options - Optional configuration including logger
  * @returns NormalizedSpec with both raw text and parsed JSON
  * @throws ByofError with code 'SPEC_ERROR' on invalid JSON or missing required fields
  */
-export function normalizeSpec(raw: string): NormalizedSpec {
-  let json: object
+export function normalizeSpec(
+  raw: string,
+  options: LoadSpecOptions = {}
+): NormalizedSpec {
+  const logger = options.logger ?? defaultLogger
+  
+  logger.debug('Normalizing API spec', { length: raw.length })
+  
+  let parsed: unknown
   
   try {
-    json = JSON.parse(raw)
-  } catch (error) {
+    parsed = JSON.parse(raw) as unknown
+  } catch (error: unknown) {
+    logger.error('Invalid JSON in API spec', { error })
     throw createSpecError('Invalid JSON in API spec', error)
   }
   
-  // Validate it looks like an OpenAPI spec
-  validateOpenApiSpec(json)
+  // Validate with Zod schema
+  const result = openApiSpecSchema.safeParse(parsed)
+  
+  if (!result.success) {
+    const errorMessage = result.error.errors
+      .map(e => `${e.path.join('.')}: ${e.message}`)
+      .join('; ')
+    logger.error('API spec validation failed', { errors: result.error.errors })
+    throw createSpecError(`Invalid API spec: ${errorMessage}`, result.error)
+  }
+  
+  logger.info('API spec normalized successfully', { 
+    version: result.data.openapi ?? result.data.swagger,
+    pathCount: Object.keys(result.data.paths).length,
+  })
   
   return {
     rawText: raw,
-    json,
-  }
-}
-
-/**
- * Validate that the parsed spec has minimal OpenAPI structure
- * @throws ByofError if validation fails
- */
-function validateOpenApiSpec(spec: object): void {
-  // Check for required OpenAPI fields
-  // - Must have 'openapi' or 'swagger' version field
-  // - Must have 'paths' object
-  // - 'info' is recommended but not strictly required
-  
-  const s = spec as Record<string, unknown>
-  
-  if (!s.openapi && !s.swagger) {
-    throw createSpecError('API spec must have "openapi" or "swagger" version field')
-  }
-  
-  if (!s.paths || typeof s.paths !== 'object') {
-    throw createSpecError('API spec must have a "paths" object')
+    json: result.data,
   }
 }
 
 function createSpecError(message: string, details?: unknown): ByofError {
   return {
-    code: 'SPEC_ERROR',
+    code: ByofErrorCode.SPEC_ERROR,
     message,
     details,
   }
@@ -100,7 +118,13 @@ export * from './loader'
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
+
+import { noopLogger } from '../types'
+
 import { loadSpecFromUrl, normalizeSpec } from './loader'
+
+// Use noop logger in tests to avoid console noise
+const testOptions = { logger: noopLogger }
 
 describe('normalizeSpec', () => {
   it('should parse valid OpenAPI 3 JSON', () => {
@@ -112,7 +136,7 @@ describe('normalizeSpec', () => {
       }
     })
     
-    const result = normalizeSpec(spec)
+    const result = normalizeSpec(spec, testOptions)
     
     expect(result.rawText).toBe(spec)
     expect(result.json).toHaveProperty('openapi', '3.0.0')
@@ -126,22 +150,31 @@ describe('normalizeSpec', () => {
       paths: {}
     })
     
-    const result = normalizeSpec(spec)
+    const result = normalizeSpec(spec, testOptions)
     expect(result.json).toHaveProperty('swagger', '2.0')
   })
   
   it('should throw on invalid JSON', () => {
-    expect(() => normalizeSpec('not json')).toThrow()
+    expect(() => normalizeSpec('not json', testOptions)).toThrow()
   })
   
   it('should throw if missing openapi/swagger version', () => {
     const spec = JSON.stringify({ paths: {} })
-    expect(() => normalizeSpec(spec)).toThrow('openapi')
+    expect(() => normalizeSpec(spec, testOptions)).toThrow('openapi')
   })
   
   it('should throw if missing paths', () => {
     const spec = JSON.stringify({ openapi: '3.0.0' })
-    expect(() => normalizeSpec(spec)).toThrow('paths')
+    expect(() => normalizeSpec(spec, testOptions)).toThrow('paths')
+  })
+  
+  it('should return ByofError with SPEC_ERROR code', () => {
+    try {
+      normalizeSpec('invalid', testOptions)
+      expect.fail('Should have thrown')
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'SPEC_ERROR' })
+    }
   })
 })
 
@@ -154,7 +187,7 @@ describe('loadSpecFromUrl', () => {
       text: () => Promise.resolve(mockSpec),
     })
     
-    const result = await loadSpecFromUrl('https://example.com/spec.json')
+    const result = await loadSpecFromUrl('https://example.com/spec.json', testOptions)
     expect(result).toBe(mockSpec)
   })
   
@@ -165,23 +198,35 @@ describe('loadSpecFromUrl', () => {
       statusText: 'Not Found',
     })
     
-    await expect(loadSpecFromUrl('https://example.com/spec.json'))
+    await expect(loadSpecFromUrl('https://example.com/spec.json', testOptions))
       .rejects.toThrow('404')
   })
   
   it('should throw on network error', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
     
-    await expect(loadSpecFromUrl('https://example.com/spec.json'))
+    await expect(loadSpecFromUrl('https://example.com/spec.json', testOptions))
       .rejects.toThrow()
+  })
+  
+  it('should return ByofError with SPEC_ERROR code on failure', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    
+    try {
+      await loadSpecFromUrl('https://example.com/spec.json', testOptions)
+      expect.fail('Should have thrown')
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'SPEC_ERROR' })
+    }
   })
 })
 ```
 
 ## Acceptance Criteria
 - [ ] `loadSpecFromUrl` fetches and returns spec text
-- [ ] `normalizeSpec` parses JSON and validates structure
+- [ ] `normalizeSpec` parses JSON and validates with Zod schema
 - [ ] Throws `ByofError` with code `SPEC_ERROR` on failures
 - [ ] Validates presence of `openapi`/`swagger` version field
 - [ ] Validates presence of `paths` object
+- [ ] Supports pluggable logger via options
 - [ ] All unit tests pass
