@@ -53,10 +53,27 @@
   - Exported save client from main index.ts
   - Follows exactOptionalPropertyTypes compliance for all optional fields
 
+- [x] Task 07: Sandbox Runner
+  - Created src/sandbox/csp.ts with CSP policy generation:
+    - `generateCsp()` - Generates Content-Security-Policy string
+    - `generateCspMetaTag()` - Creates HTML meta tag for CSP
+    - `injectCspIntoHtml()` - Injects CSP into HTML documents
+    - `isOriginAllowed()` - Validates URLs against allowlist (supports wildcards)
+  - Created src/sandbox/runner.ts with sandbox execution:
+    - `prepareSandboxHtml()` - Prepares HTML with CSP injection
+    - `loadIntoIframe()` - Loads HTML into sandboxed iframe
+    - `configureSandboxAttributes()` - Sets iframe sandbox attributes
+    - `openInNewTab()` - Opens HTML in new browser tab
+    - `downloadHtml()` - Creates downloadable HTML file
+    - `validateHtml()` - Validates HTML for security warnings
+    - `basicSanitize()` - Removes dangerous elements (meta refresh, base tags)
+  - Created src/sandbox/index.ts to export all functions and types
+  - Added 44 unit tests (21 CSP + 23 runner, total 82 tests)
+  - Exported sandbox module from main index.ts
+  - Throws ByofException with SANDBOX_ERROR code
+
 ## Pending Tasks
 
-- [ ] Task 07: Sandbox Runner
-- [ ] Task 07: Sandbox Runner
 - [ ] Task 08: Main Integration
 - [ ] Task 09: Example Frontend
 - [ ] Task 10: Example Backend
@@ -70,4 +87,6 @@
 | Spec Loader      | 11     |
 | Chat Client      | 8      |
 | Save/Load Client | 19     |
-| **Total**        | **38** |
+| Sandbox CSP      | 21     |
+| Sandbox Runner   | 23     |
+| **Total**        | **82** |

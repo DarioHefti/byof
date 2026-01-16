@@ -54,6 +54,31 @@ export { saveUI, loadUI, listSavedUIs } from './save'
 
 export type { SaveOptions, LoadOptions, ListOptions } from './save'
 
+// Re-export sandbox utilities
+export {
+  generateCsp,
+  generateCspMetaTag,
+  injectCspIntoHtml,
+  isOriginAllowed,
+  prepareSandboxHtml,
+  loadIntoIframe,
+  configureSandboxAttributes,
+  openInNewTab,
+  downloadHtml,
+  extractHtmlFromIframe,
+  clearIframe,
+  isIframeEmpty,
+  validateHtml,
+  basicSanitize,
+} from './sandbox'
+
+export type {
+  CspOptions,
+  SandboxOptions,
+  SandboxResult,
+  IframeSandboxConfig,
+} from './sandbox'
+
 import type { ByofInitOptions, ByofInstance } from './types'
 
 /**
