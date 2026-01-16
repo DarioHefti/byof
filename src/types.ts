@@ -185,6 +185,36 @@ export interface ByofError {
   details?: unknown
 }
 
+/**
+ * Error class that implements ByofError interface
+ * Use this when throwing errors to satisfy ESLint's only-throw-error rule
+ */
+export class ByofException extends Error implements ByofError {
+  readonly code: ByofErrorCode
+  readonly details?: unknown
+
+  constructor(code: ByofErrorCode, message: string, details?: unknown) {
+    super(message)
+    this.name = 'ByofException'
+    this.code = code
+    this.details = details
+
+    // Maintains proper stack trace for where our error was thrown (only in V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ByofException)
+    }
+  }
+
+  /** Convert to plain ByofError object */
+  toByofError(): ByofError {
+    return {
+      code: this.code,
+      message: this.message,
+      details: this.details,
+    }
+  }
+}
+
 // ============================================================================
 // Logger Interface (Pluggable Observability)
 // ============================================================================

@@ -39,6 +39,15 @@ export {
 
 export type { UIElements, UICallbacks, UIState, SavedItem } from './ui'
 
+// Re-export spec loader
+export {
+  loadSpecFromUrl,
+  normalizeSpec,
+  loadAndNormalizeSpec,
+} from './spec'
+
+export type { NormalizedSpec, LoadSpecOptions } from './spec'
+
 import type { ByofInitOptions, ByofInstance } from './types'
 
 /**

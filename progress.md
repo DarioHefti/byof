@@ -25,10 +25,19 @@
   - Created src/ui/index.ts to export all UI components
   - Added UI exports to main index.ts
 
+- [x] Task 04: API Spec Loader
+  - Created src/spec/loader.ts with loadSpecFromUrl and normalizeSpec
+  - Created ByofException class for proper error handling
+  - Added AbortSignal support for cancellation
+  - Created src/spec/index.ts to export functions
+  - Added 11 unit tests (all passing)
+  - Exported spec loader from main index.ts
+
 ## Pending Tasks
 
-- [ ] Task 04: Chat Client
-- [ ] Task 05: Save/Load Client
-- [ ] Task 06: Sandbox Manager
-- [ ] Task 07: Main Instance
-- [ ] Task 08: Examples
+- [ ] Task 05: Chat Client
+- [ ] Task 06: Save/Load Client
+- [ ] Task 07: Sandbox Runner
+- [ ] Task 08: Main Integration
+- [ ] Task 09: Example Frontend
+- [ ] Task 10: Example Backend

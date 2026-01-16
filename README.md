@@ -1,6 +1,6 @@
 # BYOF
 
-**Bring Your Own Frontend** — A framework-agnostic TypeScript library that generates single-file HTML applications from chat conversations and OpenAPI specs.
+**Bring Your Own Frontend** — A typescript library that lets users generate their own frontend while using your app.
 
 ```
 ┌─────────────────────────────────────┐
@@ -8,13 +8,13 @@
 ├─────────────────────────────────────┤
 │  > Build me a todo app              │
 │                                     │
-│  ┌─────────────────────────────┐   │
-│  │ Generated App Preview       │   │
-│  │ ┌─────────────────────────┐ │   │
-│  │ │ ☐ Buy groceries         │ │   │
-│  │ │ ☑ Walk the dog          │ │   │
-│  │ └─────────────────────────┘ │   │
-│  └─────────────────────────────┘   │
+│  ┌─────────────────────────────┐    │
+│  │ Generated App Preview       │    │
+│  │ ┌─────────────────────────┐ │    │
+│  │ │ ☐ Buy groceries         │ │    │
+│  │ │ ☑ Walk the dog          │ │    │
+│  │ └─────────────────────────┘ │    │
+│  └─────────────────────────────┘    │
 └─────────────────────────────────────┘
 ```
 
