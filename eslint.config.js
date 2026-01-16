@@ -63,6 +63,15 @@ export default tseslint.config(
       },
     },
   },
+  // Relaxed rules for test files
+  {
+    files: ['**/*.test.ts', '**/*.spec.ts'],
+    rules: {
+      // Allow any in test matchers (expect.stringContaining, etc.)
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+    },
+  },
   {
     ignores: ['dist/**', 'node_modules/**', 'examples/**', '*.config.*'],
   }

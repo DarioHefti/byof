@@ -48,6 +48,11 @@ export {
 
 export type { NormalizedSpec, LoadSpecOptions } from './spec'
 
+// Re-export chat client
+export { sendChat } from './chat'
+
+export type { SendChatOptions } from './chat'
+
 import type { ByofInitOptions, ByofInstance } from './types'
 
 /**

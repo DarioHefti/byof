@@ -33,9 +33,18 @@
   - Added 11 unit tests (all passing)
   - Exported spec loader from main index.ts
 
+- [x] Task 05: Chat Client
+  - Created src/chat/client.ts with sendChat function
+  - Supports timeout and AbortSignal for cancellation
+  - Validates response with Zod schema
+  - Throws ByofException with CHAT_ERROR or NETWORK_ERROR codes
+  - Created src/chat/index.ts to export functions
+  - Added 8 unit tests (all passing)
+  - Exported chat client from main index.ts
+  - Updated ESLint config to relax rules in test files
+
 ## Pending Tasks
 
-- [ ] Task 05: Chat Client
 - [ ] Task 06: Save/Load Client
 - [ ] Task 07: Sandbox Runner
 - [ ] Task 08: Main Integration
