@@ -1,0 +1,35 @@
+# Source
+src/
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+eslint.config.js
+.prettierrc
+
+# Development
+examples/
+tasks/
+plan.md
+progress.md
+DEVELOPMENT.md
+AGENTS.md
+agents.md
+.nvmrc
+scripts/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Tests
+coverage/
+*.test.ts
+
+# Misc
+node_modules/
+*.log
+.env*

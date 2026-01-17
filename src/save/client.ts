@@ -176,7 +176,14 @@ export async function saveUI(options: SaveOptions): Promise<SaveResponse> {
   } catch (error: unknown) {
     clearTimeout(timeoutId)
 
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Check for AbortError (timeout or external abort)
+    const isAbortError =
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        (error instanceof DOMException &&
+          error.code === DOMException.ABORT_ERR))
+
+    if (isAbortError) {
       logger.warn('Save request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
@@ -320,7 +327,14 @@ export async function loadUI(options: LoadOptions): Promise<LoadResponse> {
   } catch (error: unknown) {
     clearTimeout(timeoutId)
 
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Check for AbortError (timeout or external abort)
+    const isAbortError =
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        (error instanceof DOMException &&
+          error.code === DOMException.ABORT_ERR))
+
+    if (isAbortError) {
       logger.warn('Load request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
@@ -460,7 +474,14 @@ export async function listSavedUIs(
   } catch (error: unknown) {
     clearTimeout(timeoutId)
 
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Check for AbortError (timeout or external abort)
+    const isAbortError =
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        (error instanceof DOMException &&
+          error.code === DOMException.ABORT_ERR))
+
+    if (isAbortError) {
       logger.warn('List request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,

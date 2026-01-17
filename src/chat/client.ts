@@ -142,7 +142,16 @@ export async function sendChat(
   } catch (error: unknown) {
     clearTimeout(timeoutId)
 
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Check for AbortError (timeout or external abort)
+    // Use duck typing for broader compatibility across environments
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        (typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as { code: unknown }).code === 20)) // DOMException.ABORT_ERR = 20
+    ) {
       logger.warn('Chat request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,

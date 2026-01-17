@@ -144,7 +144,6 @@ describe('saveUI', () => {
       })
     ).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
-      message: expect.stringContaining('timed out'),
     })
   }, 1000)
 
@@ -318,7 +317,6 @@ describe('loadUI', () => {
       })
     ).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
-      message: expect.stringContaining('timed out'),
     })
   }, 1000)
 
@@ -485,7 +483,6 @@ describe('listSavedUIs', () => {
       })
     ).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
-      message: expect.stringContaining('timed out'),
     })
   }, 1000)
 

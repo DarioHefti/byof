@@ -9,6 +9,10 @@ export default defineConfig([
     splitting: false,
     sourcemap: true,
     clean: true,
+    treeshake: true,
+    target: 'es2020',
+    outDir: 'dist',
+    onSuccess: 'echo "Build complete!"',
   },
   // Browser bundle (all dependencies included)
   {
@@ -20,6 +24,8 @@ export default defineConfig([
     splitting: false,
     sourcemap: true,
     minify: true,
+    treeshake: true,
+    target: 'es2020',
     // Bundle all dependencies for browser use
     noExternal: [/.*/],
   },

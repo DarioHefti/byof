@@ -2,10 +2,32 @@
   "name": "byof",
   "version": "0.1.0",
   "description": "Bring Your Own Frontend - Chat-based UI generator from OpenAPI specs",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "author": "Dario Hefti",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DarioHefti/byof.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DarioHefti/byof/issues"
+  },
+  "homepage": "https://github.com/DarioHefti/byof#readme",
+  "keywords": [
+    "frontend",
+    "ui",
+    "generator",
+    "openapi",
+    "chat",
+    "ai",
+    "html",
+    "sandbox",
+    "typescript",
+    "llm"
+  ],
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -19,33 +41,41 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "example:web": "npx serve examples/vanilla -l 3000",
+    "example:api": "node examples/backend/server.js",
+    "example": "concurrently -n web,api,build -c blue,green,yellow \"npm run example:web\" \"npm run example:api\" \"npm run dev\"",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run test:run && npm run build",
+    "release": "npm run prepublishOnly && npm publish"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DarioHefti/byof.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/DarioHefti/byof/issues"
-  },
-  "homepage": "https://github.com/DarioHefti/byof#readme",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^25.0.9",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
+    "@vitest/coverage-v8": "^4.0.17",
     "concurrently": "^9.2.1",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
@@ -53,6 +83,7 @@
     "eslint-plugin-import": "^2.32.0",
     "jsdom": "^27.4.0",
     "prettier": "^3.8.0",
+    "serve": "^14.2.5",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.0",

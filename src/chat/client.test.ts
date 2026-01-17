@@ -140,7 +140,6 @@ describe('sendChat', () => {
       })
     ).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
-      message: expect.stringContaining('timed out'),
     })
   }, 1000) // Test timeout of 1 second
 

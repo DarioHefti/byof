@@ -192,6 +192,71 @@
   - Works with any auth system: JWT, API keys, session tokens, etc.
   - Added 13 tests for auth injection (total: 128 tests)
 
+- [x] Task 11: Dev Scripts and Build Configuration
+  - Installed serve and concurrently as dev dependencies
+  - Added comprehensive npm scripts:
+    - `npm run dev` - Watch mode for development
+    - `npm run example` - Run frontend + backend + build together
+    - `npm run example:web` - Serve frontend on port 3000
+    - `npm run example:api` - Run backend on port 3001
+    - `npm run lint:fix` - Auto-fix lint errors
+    - `npm run format:check` - Check formatting
+    - `npm run test:coverage` - Run tests with coverage
+    - `npm run typecheck` - TypeScript type checking
+    - `npm run prepublishOnly` - Full pre-publish validation
+  - Updated tsup.config.ts with watch mode support
+  - Created .nvmrc (Node 20)
+  - Updated .gitignore with comprehensive entries
+  - Created DEVELOPMENT.md with setup instructions
+
+- [x] Task 12: Testing
+  - Configured vitest.config.ts with:
+    - jsdom environment
+    - Setup file for mocks
+    - Coverage configuration (v8 provider)
+  - Created src/test/setup.ts with global mocks:
+    - ResizeObserver mock
+    - requestFullscreen mock
+    - URL.createObjectURL mock
+  - Created src/test/utils.ts with test helpers:
+    - createMockFetch
+    - createMockMessage
+    - createMockApiSpec
+    - createMockHtml
+    - createMockAbortController
+  - All 128 tests passing
+  - Improved AbortError detection for timeout tests
+
+- [x] Task 13: Documentation
+  - README.md already comprehensive (326 lines)
+  - Created SECURITY.md with:
+    - Sandbox security details
+    - CSP policy explanation
+    - Auth header injection notes
+    - Production recommendations
+  - Key functions have JSDoc comments:
+    - createByof
+    - sendChat
+    - saveUI/loadUI/listSavedUIs
+    - buildSystemPrompt/buildDefaultPrompt
+
+- [x] Task 14: Publish Preparation
+  - Finalized package.json with:
+    - Author and keywords
+    - Files array including docs
+    - Engine requirement (node >= 18)
+    - sideEffects: false for tree-shaking
+  - Created LICENSE (MIT)
+  - Created CHANGELOG.md with initial release notes
+  - Created .npmignore to exclude dev files
+  - Created scripts/prepublish-check.sh
+  - Created scripts/verify-install.sh
+  - Verified build produces all required files:
+    - dist/index.js (ESM)
+    - dist/index.cjs (CommonJS)
+    - dist/index.d.ts (TypeScript declarations)
+    - dist/index.browser.js (IIFE bundle)
+
 ## All Tasks Complete!
 
 ---
@@ -209,3 +274,10 @@
 | Core Integration | 19      |
 | Prompt Builder   | 14      |
 | **Total**        | **128** |
+
+## Package Summary
+
+- **Size**: ~215 KB packed, ~1.1 MB unpacked
+- **Files**: 13 files in published package
+- **Formats**: ESM, CJS, IIFE (browser bundle)
+- **TypeScript**: Full type definitions included
