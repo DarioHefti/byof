@@ -8,11 +8,23 @@
  * - POST /api/save/load - Load a saved UI
  * - POST /api/save/list - List saved UIs
  *
- * In production, you would:
- * - Use a real database instead of in-memory storage
- * - Integrate with an LLM (OpenAI, Anthropic, etc.) for HTML generation
- * - Add authentication and authorization
- * - Add rate limiting and input validation
+ * Configuration:
+ *   1. Copy .env.example to .env
+ *   2. Fill in your AI API credentials
+ *   3. Run: npm start
+ *
+ * Environment variables (set in .env or command line):
+ * - AI_API_URL: The AI API endpoint URL (required for real AI)
+ *   - OpenAI: https://api.openai.com/v1/chat/completions
+ *   - Azure OpenAI: https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=2024-02-15-preview
+ *   - Anthropic: https://api.anthropic.com/v1/messages
+ *   - Any OpenAI-compatible endpoint
+ * - AI_API_KEY: Your API key
+ * - AI_MODEL: Model name (optional, default: gpt-4o)
+ * - AI_PROVIDER: Provider type: 'openai' | 'azure' | 'anthropic' (default: auto-detect from URL)
+ * - PORT: Server port (default: 3001)
+ *
+ * If no AI_API_URL is set, the server uses mock HTML generation.
  */
 
 import cors from 'cors'
@@ -20,6 +32,30 @@ import express from 'express'
 
 const app = express()
 const PORT = process.env.PORT || 3001
+const AI_API_URL = process.env.AI_API_URL
+const AI_API_KEY = process.env.AI_API_KEY
+const AI_MODEL = process.env.AI_MODEL || 'gpt-4o'
+
+/**
+ * Detect AI provider from URL
+ */
+function detectProvider(url) {
+  if (!url) return 'mock'
+  if (url.includes('anthropic.com')) return 'anthropic'
+  if (
+    url.includes('.cognitiveservices.azure.com') ||
+    url.includes('.openai.azure.com')
+  ) {
+    // Check if it's the new Responses API or old Chat Completions
+    if (url.includes('/responses')) return 'azure-responses'
+    return 'azure'
+  }
+  if (url.includes('/responses')) return 'openai-responses'
+  return 'openai' // Default to OpenAI-compatible
+}
+
+// Detect provider after function is defined
+const AI_PROVIDER = process.env.AI_PROVIDER || detectProvider(AI_API_URL)
 
 // Middleware
 app.use(cors())
@@ -27,6 +63,160 @@ app.use(express.json({ limit: '10mb' }))
 
 // In-memory storage for saved UIs
 const savedUIs = new Map()
+
+// ============================================================================
+// Demo REST API - In-memory data store
+// ============================================================================
+
+// Seed data for users
+const users = [
+  {
+    id: 1,
+    name: 'Alice Johnson',
+    email: 'alice@example.com',
+    role: 'admin',
+    createdAt: '2024-01-15T10:00:00Z',
+  },
+  {
+    id: 2,
+    name: 'Bob Smith',
+    email: 'bob@example.com',
+    role: 'user',
+    createdAt: '2024-02-20T14:30:00Z',
+  },
+  {
+    id: 3,
+    name: 'Carol Williams',
+    email: 'carol@example.com',
+    role: 'user',
+    createdAt: '2024-03-10T09:15:00Z',
+  },
+  {
+    id: 4,
+    name: 'David Brown',
+    email: 'david@example.com',
+    role: 'moderator',
+    createdAt: '2024-04-05T16:45:00Z',
+  },
+  {
+    id: 5,
+    name: 'Eve Davis',
+    email: 'eve@example.com',
+    role: 'user',
+    createdAt: '2024-05-12T11:20:00Z',
+  },
+]
+let nextUserId = 6
+
+// ============================================================================
+// Demo REST API - User Endpoints
+// ============================================================================
+
+/**
+ * GET /users
+ * List all users
+ */
+app.get('/users', (req, res) => {
+  console.log('[Users] GET /users')
+  res.json(users)
+})
+
+/**
+ * GET /users/:id
+ * Get a single user by ID
+ */
+app.get('/users/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  console.log('[Users] GET /users/:id', { id })
+
+  const user = users.find((u) => u.id === id)
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  res.json(user)
+})
+
+/**
+ * POST /users
+ * Create a new user
+ */
+app.post('/users', (req, res) => {
+  const { name, email, role } = req.body
+  console.log('[Users] POST /users', { name, email, role })
+
+  // Validate required fields
+  if (!name || !email) {
+    return res.status(400).json({ error: 'name and email are required' })
+  }
+
+  // Check for duplicate email
+  if (users.some((u) => u.email === email)) {
+    return res.status(409).json({ error: 'Email already exists' })
+  }
+
+  const newUser = {
+    id: nextUserId++,
+    name,
+    email,
+    role: role || 'user',
+    createdAt: new Date().toISOString(),
+  }
+
+  users.push(newUser)
+  console.log('[Users] Created user:', newUser)
+
+  res.status(201).json(newUser)
+})
+
+/**
+ * PUT /users/:id
+ * Update an existing user
+ */
+app.put('/users/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  const { name, email, role } = req.body
+  console.log('[Users] PUT /users/:id', { id, name, email, role })
+
+  const userIndex = users.findIndex((u) => u.id === id)
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  // Check for duplicate email (excluding current user)
+  if (email && users.some((u) => u.email === email && u.id !== id)) {
+    return res.status(409).json({ error: 'Email already exists' })
+  }
+
+  // Update user fields
+  const user = users[userIndex]
+  if (name !== undefined) user.name = name
+  if (email !== undefined) user.email = email
+  if (role !== undefined) user.role = role
+
+  console.log('[Users] Updated user:', user)
+
+  res.json(user)
+})
+
+/**
+ * DELETE /users/:id
+ * Delete a user
+ */
+app.delete('/users/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  console.log('[Users] DELETE /users/:id', { id })
+
+  const userIndex = users.findIndex((u) => u.id === id)
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  const deletedUser = users.splice(userIndex, 1)[0]
+  console.log('[Users] Deleted user:', deletedUser)
+
+  res.status(204).send()
+})
 
 // ============================================================================
 // Chat Endpoint
@@ -38,9 +228,9 @@ const savedUIs = new Map()
  * Expected request body (ChatRequest):
  * {
  *   messages: Array<{ role: string; content: string }>
- *   apiSpec: string
+ *   systemPrompt: string  // Built by the BYOF library
+ *   apiSpec?: string      // For reference
  *   context?: { projectId?: string; userId?: string }
- *   instructions: { outputFormat: 'single_html'; allowedOrigins: string[] }
  * }
  *
  * Response (ChatResponse):
@@ -50,14 +240,14 @@ const savedUIs = new Map()
  *   warnings?: string[]
  * }
  */
-app.post('/api/chat', (req, res) => {
-  const { messages, apiSpec, context, instructions } = req.body
+app.post('/api/chat', async (req, res) => {
+  const { messages, systemPrompt, apiSpec, context } = req.body
 
   console.log('[Chat] Received request:', {
     messageCount: messages?.length,
+    systemPromptLength: systemPrompt?.length,
     hasApiSpec: !!apiSpec,
     context,
-    instructions,
   })
 
   // Validate request
@@ -67,15 +257,43 @@ app.post('/api/chat', (req, res) => {
     })
   }
 
+  if (!systemPrompt) {
+    return res.status(400).json({
+      error: 'systemPrompt is required',
+    })
+  }
+
   // Get the last user message
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
   const userRequest = lastUserMessage?.content || 'a simple UI'
 
-  // In production, you would send this to an LLM like OpenAI or Anthropic
-  // For this example, we generate a mock HTML response
-  const { html, title } = generateMockHtml(userRequest, apiSpec, context)
-
+  let html, title
   const warnings = []
+
+  // Use AI if configured, otherwise use mock
+  if (AI_API_URL && AI_API_KEY) {
+    try {
+      const result = await generateWithAI(messages, systemPrompt)
+      html = result.html
+      title = result.title
+      console.log(`[Chat] Generated with ${AI_PROVIDER}`)
+    } catch (error) {
+      console.error('[Chat] AI error:', error)
+      console.error('[Chat] AI error message:', error.message)
+      console.error('[Chat] AI error stack:', error.stack)
+      return res
+        .status(500)
+        .json({ error: 'AI generation failed: ' + error.message })
+    }
+  } else {
+    // Use mock generation
+    const result = generateMockHtml(userRequest, apiSpec, context)
+    html = result.html
+    title = result.title
+    warnings.push(
+      'Using mock generation. Set AI_API_URL and AI_API_KEY for real AI.'
+    )
+  }
 
   // Check if API spec was provided
   if (!apiSpec) {
@@ -284,6 +502,277 @@ app.post('/api/save/list', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+// Debug endpoint to check AI configuration
+app.get('/api/config', (req, res) => {
+  res.json({
+    aiConfigured: !!(AI_API_URL && AI_API_KEY),
+    provider: AI_PROVIDER,
+    model: AI_MODEL,
+    apiUrl: AI_API_URL
+      ? AI_API_URL.replace(/api-key=[^&]+/, 'api-key=***').substring(0, 80) +
+        '...'
+      : null,
+  })
+})
+
+// ============================================================================
+// AI Generation
+// ============================================================================
+
+/**
+ * Generate HTML using the configured AI provider
+ *
+ * The system prompt is now provided by the BYOF library, not built here.
+ */
+async function generateWithAI(messages, systemPrompt) {
+  if (AI_PROVIDER === 'anthropic') {
+    return await callAnthropic(systemPrompt, messages)
+  } else if (
+    AI_PROVIDER === 'azure-responses' ||
+    AI_PROVIDER === 'openai-responses'
+  ) {
+    return await callResponsesAPI(systemPrompt, messages)
+  } else {
+    // OpenAI Chat Completions, Azure Chat Completions, or OpenAI-compatible
+    return await callOpenAI(systemPrompt, messages)
+  }
+}
+
+/**
+ * Call OpenAI or Azure OpenAI API
+ */
+async function callOpenAI(systemPrompt, messages) {
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+
+  // Azure uses api-key header, OpenAI uses Authorization
+  if (AI_PROVIDER === 'azure') {
+    headers['api-key'] = AI_API_KEY
+  } else {
+    headers['Authorization'] = `Bearer ${AI_API_KEY}`
+  }
+
+  const body = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
+    temperature: 0.7,
+    max_tokens: 4096,
+  }
+
+  // Only add model for non-Azure (Azure uses deployment in URL)
+  if (AI_PROVIDER !== 'azure') {
+    body.model = AI_MODEL
+  }
+
+  console.log('[AI] Calling OpenAI-compatible API:', AI_API_URL)
+
+  const response = await fetch(AI_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('[AI] API error:', response.status, errorText)
+    throw new Error(`API returned ${response.status}: ${errorText}`)
+  }
+
+  const data = await response.json()
+  const content = data.choices?.[0]?.message?.content
+
+  if (!content) {
+    throw new Error('No content in AI response')
+  }
+
+  // Extract HTML and title
+  const html = extractHtml(content)
+  const title = extractTitle(html)
+
+  return { html, title }
+}
+
+/**
+ * Call OpenAI/Azure Responses API (new format)
+ */
+async function callResponsesAPI(systemPrompt, messages) {
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+
+  // Azure uses api-key header
+  if (AI_PROVIDER === 'azure-responses') {
+    headers['api-key'] = AI_API_KEY
+  } else {
+    headers['Authorization'] = `Bearer ${AI_API_KEY}`
+  }
+
+  // Build input array for Responses API
+  const input = [
+    { role: 'system', content: systemPrompt },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ]
+
+  const body = {
+    model: AI_MODEL,
+    input: input,
+  }
+
+  console.log('[AI] Calling Responses API:', AI_API_URL)
+  console.log('[AI] Provider:', AI_PROVIDER)
+  console.log('[AI] Model:', AI_MODEL)
+
+  const response = await fetch(AI_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('[AI] API error:', response.status, errorText)
+    throw new Error(`API returned ${response.status}: ${errorText}`)
+  }
+
+  const data = await response.json()
+
+  // Responses API returns output_text or output array
+  let content = data.output_text
+  if (!content && data.output) {
+    // Find the message output
+    const messageOutput = data.output.find((o) => o.type === 'message')
+    if (messageOutput && messageOutput.content) {
+      // Handle both 'text' and 'output_text' content types
+      const textContent = messageOutput.content.find(
+        (c) => c.type === 'text' || c.type === 'output_text'
+      )
+      content = textContent?.text
+    }
+  }
+
+  if (!content) {
+    // Log full response for debugging
+    console.error(
+      '[AI] Unexpected response format:',
+      JSON.stringify(data, null, 2)
+    )
+    // Try to extract from any nested structure we might have missed
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.content && Array.isArray(item.content)) {
+          for (const c of item.content) {
+            if (c.text) {
+              content = c.text
+              console.log('[AI] Found content via fallback extraction')
+              break
+            }
+          }
+        }
+        if (content) break
+      }
+    }
+  }
+
+  if (!content) {
+    throw new Error('No content in AI response')
+  }
+
+  // Extract HTML and title
+  const html = extractHtml(content)
+  const title = extractTitle(html)
+
+  return { html, title }
+}
+
+/**
+ * Call Anthropic Claude API
+ */
+async function callAnthropic(systemPrompt, messages) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': AI_API_KEY,
+    'anthropic-version': '2023-06-01',
+  }
+
+  const body = {
+    model: AI_MODEL || 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+  }
+
+  console.log('[AI] Calling Anthropic API:', AI_API_URL)
+
+  const response = await fetch(AI_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('[AI] API error:', response.status, errorText)
+    throw new Error(`API returned ${response.status}: ${errorText}`)
+  }
+
+  const data = await response.json()
+  const content = data.content?.[0]?.text
+
+  if (!content) {
+    throw new Error('No content in AI response')
+  }
+
+  // Extract HTML and title
+  const html = extractHtml(content)
+  const title = extractTitle(html)
+
+  return { html, title }
+}
+
+/**
+ * Extract HTML from AI response (handles code blocks if present)
+ */
+function extractHtml(content) {
+  // Remove markdown code blocks if present
+  let html = content.trim()
+
+  // Handle ```html ... ``` blocks
+  const codeBlockMatch = html.match(/```(?:html)?\s*([\s\S]*?)```/)
+  if (codeBlockMatch) {
+    html = codeBlockMatch[1].trim()
+  }
+
+  // Ensure it starts with DOCTYPE or html tag
+  if (
+    !html.toLowerCase().startsWith('<!doctype') &&
+    !html.toLowerCase().startsWith('<html')
+  ) {
+    // Try to find the HTML start
+    const htmlStart = html.indexOf('<!DOCTYPE')
+    if (htmlStart === -1) {
+      const htmlTagStart = html.indexOf('<html')
+      if (htmlTagStart !== -1) {
+        html = html.substring(htmlTagStart)
+      }
+    } else {
+      html = html.substring(htmlStart)
+    }
+  }
+
+  return html
+}
+
+/**
+ * Extract title from HTML
+ */
+function extractTitle(html) {
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
+  return titleMatch ? titleMatch[1] : 'Generated UI'
+}
 
 // ============================================================================
 // Helper Functions
@@ -776,19 +1265,38 @@ function escapeHtml(str) {
 // ============================================================================
 
 app.listen(PORT, () => {
+  const aiStatus =
+    AI_API_URL && AI_API_KEY
+      ? `${AI_PROVIDER.toUpperCase()} (${AI_MODEL})`
+      : 'Mock (set AI_API_URL & AI_API_KEY for real AI)'
+
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
 ║   BYOF Example Backend                                         ║
 ║                                                                ║
 ║   Server running at: http://localhost:${PORT}                    ║
+║   AI Provider: ${aiStatus.padEnd(46)}║
 ║                                                                ║
-║   Endpoints:                                                   ║
+║   Demo REST API (for generated UIs to call):                   ║
+║   - GET    /users        - List all users                      ║
+║   - POST   /users        - Create a user                       ║
+║   - GET    /users/:id    - Get user by ID                      ║
+║   - PUT    /users/:id    - Update user                         ║
+║   - DELETE /users/:id    - Delete user                         ║
+║                                                                ║
+║   BYOF SDK Endpoints:                                          ║
 ║   - POST /api/chat       - Generate HTML from messages         ║
 ║   - POST /api/save       - Save a generated UI                 ║
 ║   - POST /api/save/load  - Load a saved UI                     ║
 ║   - POST /api/save/list  - List saved UIs                      ║
 ║   - GET  /health         - Health check                        ║
+║                                                                ║
+║   Environment Variables:                                       ║
+║   - AI_API_URL    : Your AI endpoint URL                       ║
+║   - AI_API_KEY    : Your API key                               ║
+║   - AI_MODEL      : Model name (default: gpt-4o)               ║
+║   - AI_PROVIDER   : openai | azure | anthropic                 ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
   `)
