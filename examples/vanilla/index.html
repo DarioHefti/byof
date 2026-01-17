@@ -191,6 +191,12 @@
         display: block;
         margin-bottom: 4px;
       }
+
+      /* Hide config and notice when initialized */
+      body.byof-initialized .config-panel,
+      body.byof-initialized .demo-notice {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -239,6 +245,12 @@
             <option value="brand">Brand Colors</option>
           </select>
         </div>
+        <div class="config-field">
+          <label for="auth-toggle">
+            <input type="checkbox" id="auth-toggle" checked />
+            Enable Auth (JWT)
+          </label>
+        </div>
         <div class="config-actions">
           <button class="config-btn config-btn-primary" id="init-btn">
             Initialize
@@ -258,14 +270,15 @@
     <div class="demo-notice">
       <strong>Getting Started</strong>
       <ol style="margin: 8px 0 0 20px; line-height: 1.8">
+        <li>Build the SDK: <code>npm run build</code></li>
         <li>
           Start the backend:
           <code>cd examples/backend && npm install && npm start</code>
         </li>
         <li>
-          In another terminal, serve this page:
-          <code>npx serve examples/vanilla</code>
+          In another terminal, serve from project root: <code>npx serve .</code>
         </li>
+        <li>Open: <code>http://localhost:3000/examples/vanilla/</code></li>
         <li>Click "Initialize" to start BYOF</li>
         <li>
           Try prompts like: "create a dashboard", "show me a form", "list of
@@ -286,11 +299,169 @@
       <div id="event-log-content"></div>
     </div>
 
-    <!-- Load BYOF SDK - in production this would be from npm -->
-    <script type="module">
-      // In production: import { createByof } from 'byof'
-      // For development, we import from the dist folder
-      import { createByof, VERSION } from '../../dist/index.js'
+    <!-- Load BYOF SDK - browser bundle with all dependencies included -->
+    <script src="../../dist/index.browser.js"></script>
+    <script>
+      // The browser bundle exposes BYOF as a global
+      const { createByof, VERSION } = BYOF
+
+      // Demo API spec - describes the actual REST API endpoints on the backend
+      // The backend (localhost:3001) implements these endpoints with in-memory data
+      const demoApiSpec = JSON.stringify(
+        {
+          openapi: '3.0.0',
+          info: {
+            title: 'User Management API',
+            version: '1.0.0',
+            description:
+              'A simple REST API for managing users. Base URL: http://localhost:3001',
+          },
+          servers: [
+            {
+              url: 'http://localhost:3001',
+              description: 'Local development server',
+            },
+          ],
+          paths: {
+            '/users': {
+              get: {
+                summary: 'List all users',
+                description: 'Returns an array of all users in the system',
+                responses: {
+                  200: {
+                    description: 'Array of user objects',
+                    content: {
+                      'application/json': {
+                        example: [
+                          {
+                            id: 1,
+                            name: 'Alice Johnson',
+                            email: 'alice@example.com',
+                            role: 'admin',
+                            createdAt: '2024-01-15T10:00:00Z',
+                          },
+                          {
+                            id: 2,
+                            name: 'Bob Smith',
+                            email: 'bob@example.com',
+                            role: 'user',
+                            createdAt: '2024-02-20T14:30:00Z',
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+              post: {
+                summary: 'Create a new user',
+                description:
+                  'Creates a new user and returns the created user object',
+                requestBody: {
+                  required: true,
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'object',
+                        required: ['name', 'email'],
+                        properties: {
+                          name: { type: 'string', example: 'John Doe' },
+                          email: {
+                            type: 'string',
+                            format: 'email',
+                            example: 'john@example.com',
+                          },
+                          role: {
+                            type: 'string',
+                            enum: ['admin', 'moderator', 'user'],
+                            default: 'user',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                responses: {
+                  201: { description: 'User created successfully' },
+                  400: { description: 'Missing required fields (name, email)' },
+                  409: { description: 'Email already exists' },
+                },
+              },
+            },
+            '/users/{id}': {
+              get: {
+                summary: 'Get user by ID',
+                description: 'Returns a single user by their ID',
+                parameters: [
+                  {
+                    name: 'id',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'integer' },
+                  },
+                ],
+                responses: {
+                  200: { description: 'User object' },
+                  404: { description: 'User not found' },
+                },
+              },
+              put: {
+                summary: 'Update user',
+                description:
+                  'Updates an existing user. All fields are optional.',
+                parameters: [
+                  {
+                    name: 'id',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'integer' },
+                  },
+                ],
+                requestBody: {
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string' },
+                          email: { type: 'string', format: 'email' },
+                          role: {
+                            type: 'string',
+                            enum: ['admin', 'moderator', 'user'],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                responses: {
+                  200: { description: 'Updated user object' },
+                  404: { description: 'User not found' },
+                  409: { description: 'Email already exists' },
+                },
+              },
+              delete: {
+                summary: 'Delete user',
+                description: 'Deletes a user by their ID',
+                parameters: [
+                  {
+                    name: 'id',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'integer' },
+                  },
+                ],
+                responses: {
+                  204: { description: 'User deleted (no content)' },
+                  404: { description: 'User not found' },
+                },
+              },
+            },
+          },
+        },
+        null,
+        2
+      )
 
       // Theme presets
       const themes = {
@@ -302,6 +473,12 @@
           borderColor: '#3a3a5e',
           errorColor: '#ff6b6b',
           successColor: '#55efc4',
+          // Additional dark theme variables
+          customVariables: {
+            'byof-bg-secondary': '#2a2a4e',
+            'byof-text-muted': '#a0a0b0',
+            'byof-error-bg': '#3a2020',
+          },
         },
         brand: {
           primaryColor: '#e74c3c',
@@ -315,11 +492,17 @@
       // State
       let byofInstance = null
 
+      // Demo JWT token (for demonstration purposes)
+      // In a real app, this would come from your auth service
+      const DEMO_JWT =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMyIsIm5hbWUiOiJKb2huIERvZSIsImVtYWlsIjoiam9obkBleGFtcGxlLmNvbSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwNDAwMDAwMCwiZXhwIjoxODA0MDAwMDAwfQ.demo-signature'
+
       // DOM elements
       const chatEndpointInput = document.getElementById('chat-endpoint')
       const saveEndpointInput = document.getElementById('save-endpoint')
       const apiSpecUrlInput = document.getElementById('api-spec-url')
       const themeSelect = document.getElementById('theme-select')
+      const authToggle = document.getElementById('auth-toggle')
       const initBtn = document.getElementById('init-btn')
       const destroyBtn = document.getElementById('destroy-btn')
       const clearLogBtn = document.getElementById('clear-log-btn')
@@ -359,40 +542,60 @@
         const apiSpecUrl = apiSpecUrlInput.value.trim() || undefined
         const theme = themes[themeSelect.value] || {}
 
+        // Use demo API spec if no URL provided
+        const apiSpec = apiSpecUrl ? undefined : demoApiSpec
+
         logEvent('info', `Initializing BYOF v${VERSION}...`)
 
+        // Build config object
+        const config = {
+          mount: mountEl,
+          chatEndpoint,
+          saveEndpoint,
+          apiSpecUrl,
+          apiSpec,
+          theme,
+          projectId: 'example-project',
+          userId: 'example-user',
+          sandbox: {
+            allowlist: ['http://localhost:3001'],
+          },
+          onHtmlGenerated: (html, title) => {
+            logEvent('info', 'HTML Generated', {
+              title,
+              htmlLength: html.length,
+            })
+          },
+          onError: (error) => {
+            logEvent('error', `Error: ${error.message}`, { code: error.code })
+          },
+          onSaveComplete: (ref) => {
+            logEvent('info', 'Saved', { id: ref.id, name: ref.name })
+          },
+          onLoadComplete: (ref) => {
+            logEvent('info', 'Loaded', { id: ref.id, name: ref.name })
+          },
+        }
+
+        // Add auth if enabled
+        if (authToggle.checked) {
+          config.getAuthHeaders = () => {
+            logEvent('info', 'Auth headers requested (JWT injected)')
+            return {
+              Authorization: `Bearer ${DEMO_JWT}`,
+              'X-User-ID': 'user-123',
+              'X-Tenant-ID': 'tenant-456',
+            }
+          }
+        }
+
         try {
-          byofInstance = createByof({
-            mount: mountEl,
-            chatEndpoint,
-            saveEndpoint,
-            apiSpecUrl,
-            theme,
-            projectId: 'example-project',
-            userId: 'example-user',
-            sandbox: {
-              allowlist: ['https://api.example.com', 'http://localhost:*'],
-            },
-            onHtmlGenerated: (html, title) => {
-              logEvent('info', 'HTML Generated', {
-                title,
-                htmlLength: html.length,
-              })
-            },
-            onError: (error) => {
-              logEvent('error', `Error: ${error.message}`, { code: error.code })
-            },
-            onSaveComplete: (ref) => {
-              logEvent('info', 'Saved', { id: ref.id, name: ref.name })
-            },
-            onLoadComplete: (ref) => {
-              logEvent('info', 'Loaded', { id: ref.id, name: ref.name })
-            },
-          })
+          byofInstance = createByof(config)
 
           logEvent('info', 'BYOF initialized successfully')
           initBtn.disabled = true
           destroyBtn.disabled = false
+          document.body.classList.add('byof-initialized')
         } catch (err) {
           logEvent('error', `Failed to initialize: ${err.message}`)
         }
@@ -411,6 +614,7 @@
         logEvent('info', 'BYOF destroyed')
         initBtn.disabled = false
         destroyBtn.disabled = true
+        document.body.classList.remove('byof-initialized')
       }
 
       // Clear log

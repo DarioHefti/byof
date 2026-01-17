@@ -2,9 +2,12 @@ export const styles = `
   .byof-container {
     --byof-primary: #0066cc;
     --byof-bg: #ffffff;
+    --byof-bg-secondary: #f5f5f5;
     --byof-text: #333333;
+    --byof-text-muted: #666666;
     --byof-border: #e0e0e0;
     --byof-error: #cc0000;
+    --byof-error-bg: #fff0f0;
     --byof-success: #00aa00;
     --byof-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --byof-font-size: 14px;
@@ -134,6 +137,8 @@ export const styles = `
     line-height: 1.4;
     min-height: 42px;
     max-height: 120px;
+    background: var(--byof-bg);
+    color: var(--byof-text);
   }
 
   .byof-textarea:focus {
@@ -142,7 +147,7 @@ export const styles = `
   }
 
   .byof-textarea:disabled {
-    background: var(--byof-border);
+    background: var(--byof-bg-secondary);
     opacity: 0.6;
   }
 
@@ -169,6 +174,8 @@ export const styles = `
     border-radius: var(--byof-border-radius);
     font-family: inherit;
     font-size: inherit;
+    background: var(--byof-bg);
+    color: var(--byof-text);
   }
 
   .byof-input:focus {
@@ -177,7 +184,7 @@ export const styles = `
   }
 
   .byof-input:disabled {
-    background: var(--byof-border);
+    background: var(--byof-bg-secondary);
     opacity: 0.6;
   }
 
@@ -197,7 +204,7 @@ export const styles = `
   }
 
   .byof-select:disabled {
-    background: var(--byof-border);
+    background: var(--byof-bg-secondary);
     opacity: 0.6;
   }
 
@@ -221,7 +228,7 @@ export const styles = `
   .byof-sandbox-iframe-container {
     flex: 1;
     position: relative;
-    background: #f5f5f5;
+    background: var(--byof-bg-secondary);
   }
 
   .byof-sandbox-iframe {
@@ -274,7 +281,7 @@ export const styles = `
   }
 
   .byof-btn-secondary:hover:not(:disabled) {
-    background: #d0d0d0;
+    opacity: 0.8;
   }
 
   .byof-btn-icon {
@@ -290,7 +297,7 @@ export const styles = `
   /* Error display */
   .byof-error {
     padding: var(--byof-padding);
-    background: #fff0f0;
+    background: var(--byof-error-bg);
     border: 1px solid var(--byof-error);
     border-radius: var(--byof-border-radius);
     color: var(--byof-error);
@@ -334,7 +341,8 @@ export const styles = `
     top: 0;
     right: 0;
     z-index: 1;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--byof-bg);
+    opacity: 0.95;
     border-radius: 0 0 0 var(--byof-border-radius);
   }
 `

@@ -31,8 +31,8 @@ describe('sendChat', () => {
     const resultPromise = sendChat({
       endpoint: 'https://api.example.com/chat',
       messages: [{ role: 'user', content: 'Hello', ts: Date.now() }],
+      systemPrompt: 'Generate HTML',
       apiSpec: '{"openapi":"3.0.0","paths":{}}',
-      allowedOrigins: ['https://api.example.com'],
       logger: testLogger,
     })
 
@@ -64,8 +64,7 @@ describe('sendChat', () => {
       sendChat({
         endpoint: 'https://api.example.com/chat',
         messages: [],
-        apiSpec: '{}',
-        allowedOrigins: [],
+        systemPrompt: 'Generate HTML',
         logger: testLogger,
       })
     ).rejects.toMatchObject({
@@ -83,8 +82,7 @@ describe('sendChat', () => {
       sendChat({
         endpoint: 'https://api.example.com/chat',
         messages: [],
-        apiSpec: '{}',
-        allowedOrigins: [],
+        systemPrompt: 'Generate HTML',
         logger: testLogger,
       })
     ).rejects.toMatchObject({
@@ -103,8 +101,7 @@ describe('sendChat', () => {
       sendChat({
         endpoint: 'https://api.example.com/chat',
         messages: [],
-        apiSpec: '{}',
-        allowedOrigins: [],
+        systemPrompt: 'Generate HTML',
         logger: testLogger,
       })
     ).rejects.toMatchObject({
@@ -137,8 +134,7 @@ describe('sendChat', () => {
       sendChat({
         endpoint: 'https://api.example.com/chat',
         messages: [],
-        apiSpec: '{}',
-        allowedOrigins: [],
+        systemPrompt: 'Generate HTML',
         timeout: 10, // Very short timeout (10ms)
         logger: testLogger,
       })
@@ -155,8 +151,7 @@ describe('sendChat', () => {
       sendChat({
         endpoint: 'https://api.example.com/chat',
         messages: [],
-        apiSpec: '{}',
-        allowedOrigins: [],
+        systemPrompt: 'Generate HTML',
         logger: testLogger,
       })
     ).rejects.toMatchObject({
@@ -189,8 +184,7 @@ describe('sendChat', () => {
       sendChat({
         endpoint: 'https://api.example.com/chat',
         messages: [],
-        apiSpec: '{}',
-        allowedOrigins: [],
+        systemPrompt: 'Generate HTML',
         signal: controller.signal,
         logger: testLogger,
       })
@@ -210,8 +204,7 @@ describe('sendChat', () => {
     await sendChat({
       endpoint: 'https://api.example.com/chat',
       messages: [{ role: 'user', content: 'Hello', ts: Date.now() }],
-      apiSpec: '{}',
-      allowedOrigins: ['https://api.example.com'],
+      systemPrompt: 'Generate HTML',
       context: { projectId: 'proj-123', userId: 'user-456' },
       logger: testLogger,
     })

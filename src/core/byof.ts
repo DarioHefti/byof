@@ -6,10 +6,12 @@
  */
 
 import { sendChat } from '../chat'
-import { loadIntoIframe, openInNewTab } from '../sandbox'
+import { buildSystemPrompt, getApiBaseUrl } from '../prompt'
+import { injectAuthIntoHtml, loadIntoIframe, openInNewTab } from '../sandbox'
 import { listSavedUIs, loadUI, saveUI } from '../save'
 import { loadSpecFromUrl } from '../spec'
 import {
+  type AuthHeaders,
   type ByofError,
   type ByofInitOptions,
   type ByofInstance,
@@ -276,8 +278,8 @@ async function loadSaved(state: ByofInternalState, id: string): Promise<void> {
       state.apiSpec = result.apiSpec
     }
 
-    // Load HTML into sandbox
-    loadHtmlIntoSandbox(state, result.html)
+    // Load HTML into sandbox (with auth injection if configured)
+    await loadHtmlIntoSandboxWithAuth(state, result.html)
 
     // Update UI
     updateUI(state.elements, state.uiState)
@@ -403,11 +405,6 @@ async function handleLoad(state: ByofInternalState, id: string): Promise<void> {
 // ============================================================================
 
 async function sendChatRequest(state: ByofInternalState): Promise<void> {
-  if (!state.apiSpec) {
-    showError(state, 'API specification not loaded')
-    return
-  }
-
   setLoading(state, true)
   clearError(state)
 
@@ -415,14 +412,34 @@ async function sendChatRequest(state: ByofInternalState): Promise<void> {
   state.abortController = new AbortController()
 
   try {
+    // Check if auth is configured
+    const hasAuth = state.options.getAuthHeaders !== undefined
+
+    // Build system prompt using library or custom config
+    const promptConfig = state.options.prompt
+    const apiBaseUrl = getApiBaseUrl(state.allowedOrigins)
+    const systemPrompt = buildSystemPrompt(
+      {
+        apiSpec: state.apiSpec || undefined,
+        apiBaseUrl,
+        allowedOrigins: state.allowedOrigins,
+        hasAuth,
+      },
+      promptConfig
+    )
+
     // Build chat options with exactOptionalPropertyTypes compliance
     const chatOptions: Parameters<typeof sendChat>[0] = {
       endpoint: state.chatEndpoint,
       messages: state.uiState.messages,
-      apiSpec: state.apiSpec,
-      allowedOrigins: state.allowedOrigins,
+      systemPrompt,
       signal: state.abortController.signal,
       logger: state.logger,
+    }
+
+    // Only add optional fields if defined
+    if (state.apiSpec) {
+      chatOptions.apiSpec = state.apiSpec
     }
 
     const ctx = buildContext(state)
@@ -444,8 +461,8 @@ async function sendChatRequest(state: ByofInternalState): Promise<void> {
     state.uiState.currentHtml = response.html
     state.uiState.isDirty = true
 
-    // Load HTML into sandbox
-    loadHtmlIntoSandbox(state, response.html)
+    // Load HTML into sandbox (with auth injection if configured)
+    await loadHtmlIntoSandboxWithAuth(state, response.html)
 
     // Call callback if provided
     if (state.options.onHtmlGenerated) {
@@ -524,11 +541,31 @@ async function refreshSavedItems(state: ByofInternalState): Promise<void> {
   }
 }
 
-function loadHtmlIntoSandbox(state: ByofInternalState, html: string): void {
+/**
+ * Load HTML into sandbox with optional auth header injection
+ */
+async function loadHtmlIntoSandboxWithAuth(
+  state: ByofInternalState,
+  html: string
+): Promise<void> {
   try {
+    let processedHtml = html
+
+    // Inject auth headers if callback is configured
+    if (state.options.getAuthHeaders) {
+      state.logger.debug('Getting auth headers for sandbox')
+      const authHeaders = await resolveAuthHeaders(state)
+      if (Object.keys(authHeaders).length > 0) {
+        processedHtml = injectAuthIntoHtml(html, authHeaders)
+        state.logger.debug('Auth headers injected into HTML', {
+          headerCount: Object.keys(authHeaders).length,
+        })
+      }
+    }
+
     loadIntoIframe({
       iframe: state.elements.sandboxIframe,
-      html,
+      html: processedHtml,
       options: {
         allowedOrigins: state.allowedOrigins,
         logger: state.logger,
@@ -536,6 +573,26 @@ function loadHtmlIntoSandbox(state: ByofInternalState, html: string): void {
     })
   } catch (error: unknown) {
     handleError(state, error)
+  }
+}
+
+/**
+ * Resolve auth headers from callback (sync or async)
+ */
+async function resolveAuthHeaders(
+  state: ByofInternalState
+): Promise<AuthHeaders> {
+  if (!state.options.getAuthHeaders) {
+    return {}
+  }
+
+  try {
+    const result = state.options.getAuthHeaders()
+    // Handle both sync and async returns
+    return result instanceof Promise ? await result : result
+  } catch (error: unknown) {
+    state.logger.error('Failed to get auth headers', { error })
+    return {}
   }
 }
 

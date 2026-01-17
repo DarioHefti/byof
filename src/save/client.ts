@@ -237,7 +237,12 @@ export async function loadUI(options: LoadOptions): Promise<LoadResponse> {
       id,
     }
 
-    const response = await fetch(endpoint, {
+    // Append /load to the endpoint
+    const loadUrl = endpoint.endsWith('/')
+      ? `${endpoint}load`
+      : `${endpoint}/load`
+
+    const response = await fetch(loadUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -381,7 +386,12 @@ export async function listSavedUIs(
       request.projectId = projectId
     }
 
-    const response = await fetch(endpoint, {
+    // Append /list to the endpoint
+    const listUrl = endpoint.endsWith('/')
+      ? `${endpoint}list`
+      : `${endpoint}/list`
+
+    const response = await fetch(listUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

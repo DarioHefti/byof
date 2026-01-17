@@ -27,3 +27,11 @@ export type {
   SandboxResult,
   IframeSandboxConfig,
 } from './runner'
+
+// Auth injection utilities
+export {
+  AUTH_GLOBAL_NAME,
+  generateAuthScript,
+  injectAuthIntoHtml,
+  hasAuthInjection,
+} from './auth'

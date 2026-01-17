@@ -208,7 +208,7 @@ describe('loadUI', () => {
     })
 
     const resultPromise = loadUI({
-      endpoint: 'https://api.example.com/load',
+      endpoint: 'https://api.example.com/save',
       id: 'saved-123',
       logger: testLogger,
     })
@@ -220,6 +220,11 @@ describe('loadUI', () => {
     expect(result.html).toBe('<html>loaded</html>')
     expect(result.name).toBe('My UI')
     expect(result.updatedAt).toBe('2024-01-01T00:00:00Z')
+    // Verify /load is appended to endpoint
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://api.example.com/save/load',
+      expect.any(Object)
+    )
   })
 
   it('should include messages in response', async () => {
@@ -235,7 +240,7 @@ describe('loadUI', () => {
     })
 
     const result = await loadUI({
-      endpoint: 'https://api.example.com/load',
+      endpoint: 'https://api.example.com/save',
       id: 'saved-123',
       logger: testLogger,
     })
@@ -258,7 +263,7 @@ describe('loadUI', () => {
 
     await expect(
       loadUI({
-        endpoint: 'https://api.example.com/load',
+        endpoint: 'https://api.example.com/save',
         id: 'nonexistent',
         logger: testLogger,
       })
@@ -275,7 +280,7 @@ describe('loadUI', () => {
 
     await expect(
       loadUI({
-        endpoint: 'https://api.example.com/load',
+        endpoint: 'https://api.example.com/save',
         id: 'test',
         logger: testLogger,
       })
@@ -306,7 +311,7 @@ describe('loadUI', () => {
 
     await expect(
       loadUI({
-        endpoint: 'https://api.example.com/load',
+        endpoint: 'https://api.example.com/save',
         id: 'test',
         timeout: 10,
         logger: testLogger,
@@ -339,7 +344,7 @@ describe('loadUI', () => {
 
     await expect(
       loadUI({
-        endpoint: 'https://api.example.com/load',
+        endpoint: 'https://api.example.com/save',
         id: 'test',
         signal: controller.signal,
         logger: testLogger,
@@ -377,7 +382,7 @@ describe('listSavedUIs', () => {
     })
 
     const resultPromise = listSavedUIs({
-      endpoint: 'https://api.example.com/list',
+      endpoint: 'https://api.example.com/save',
       logger: testLogger,
     })
 
@@ -387,6 +392,11 @@ describe('listSavedUIs', () => {
     expect(result.items).toHaveLength(2)
     expect(result.items[0]).toMatchObject({ id: 'ui-1', name: 'First' })
     expect(result.items[1]).toMatchObject({ id: 'ui-2', name: 'Second' })
+    // Verify /list is appended to endpoint
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://api.example.com/save/list',
+      expect.any(Object)
+    )
   })
 
   it('should include projectId in request', async () => {
@@ -398,7 +408,7 @@ describe('listSavedUIs', () => {
     })
 
     await listSavedUIs({
-      endpoint: 'https://api.example.com/list',
+      endpoint: 'https://api.example.com/save',
       projectId: 'proj-123',
       logger: testLogger,
     })
@@ -423,7 +433,7 @@ describe('listSavedUIs', () => {
 
     await expect(
       listSavedUIs({
-        endpoint: 'https://api.example.com/list',
+        endpoint: 'https://api.example.com/save',
         logger: testLogger,
       })
     ).rejects.toMatchObject({
@@ -439,7 +449,7 @@ describe('listSavedUIs', () => {
 
     await expect(
       listSavedUIs({
-        endpoint: 'https://api.example.com/list',
+        endpoint: 'https://api.example.com/save',
         logger: testLogger,
       })
     ).rejects.toMatchObject({
@@ -469,7 +479,7 @@ describe('listSavedUIs', () => {
 
     await expect(
       listSavedUIs({
-        endpoint: 'https://api.example.com/list',
+        endpoint: 'https://api.example.com/save',
         timeout: 10,
         logger: testLogger,
       })
@@ -501,7 +511,7 @@ describe('listSavedUIs', () => {
 
     await expect(
       listSavedUIs({
-        endpoint: 'https://api.example.com/list',
+        endpoint: 'https://api.example.com/save',
         signal: controller.signal,
         logger: testLogger,
       })
@@ -519,7 +529,7 @@ describe('listSavedUIs', () => {
     })
 
     const result = await listSavedUIs({
-      endpoint: 'https://api.example.com/list',
+      endpoint: 'https://api.example.com/save',
       logger: testLogger,
     })
 

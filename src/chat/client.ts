@@ -12,13 +12,15 @@ import {
 export interface SendChatOptions {
   endpoint: string
   messages: ByofMessage[]
-  apiSpec: string
+  /** System prompt built by the library */
+  systemPrompt: string
+  /** API spec as JSON string (optional, for backend reference) */
+  apiSpec?: string
   context?: {
     projectId?: string
     userId?: string
   }
-  allowedOrigins: string[]
-  /** Timeout in milliseconds. Default: 60000ms (1 minute) */
+  /** Timeout in milliseconds. Default: 300000ms (5 minutes) */
   timeout?: number
   /** AbortSignal for cancellation */
   signal?: AbortSignal
@@ -37,10 +39,10 @@ export async function sendChat(
   const {
     endpoint,
     messages,
+    systemPrompt,
     apiSpec,
     context,
-    allowedOrigins,
-    timeout = 60000,
+    timeout = 300000,
     signal,
     logger = defaultLogger,
   } = options
@@ -48,7 +50,7 @@ export async function sendChat(
   logger.debug('Sending chat request', {
     endpoint,
     messageCount: messages.length,
-    allowedOrigins,
+    systemPromptLength: systemPrompt.length,
   })
 
   // Create abort controller for timeout
@@ -63,14 +65,13 @@ export async function sendChat(
   try {
     const request: ChatRequest = {
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      apiSpec,
-      instructions: {
-        outputFormat: 'single_html',
-        allowedOrigins,
-      },
+      systemPrompt,
     }
 
-    // Only add context if provided (exactOptionalPropertyTypes compliance)
+    // Only add optional fields if provided (exactOptionalPropertyTypes compliance)
+    if (apiSpec !== undefined) {
+      request.apiSpec = apiSpec
+    }
     if (context) {
       request.context = context
     }

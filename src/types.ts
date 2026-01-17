@@ -2,14 +2,37 @@
 // Configuration Types
 // ============================================================================
 
-/** Theme configuration for UI customization */
+/**
+ * Theme configuration for UI customization.
+ *
+ * All colors support any valid CSS color value.
+ *
+ * @example
+ * // Dark theme
+ * {
+ *   primaryColor: '#6c5ce7',
+ *   backgroundColor: '#1a1a2e',
+ *   textColor: '#e0e0e0',
+ *   borderColor: '#3a3a5e',
+ *   customVariables: {
+ *     'byof-bg-secondary': '#2a2a4e',
+ *     'byof-error-bg': '#3a2020',
+ *   }
+ * }
+ */
 export interface ByofTheme {
   // CSS variable overrides
+  /** Primary accent color (buttons, links, focus states) */
   primaryColor?: string
+  /** Main background color */
   backgroundColor?: string
+  /** Primary text color */
   textColor?: string
+  /** Border color for inputs, dividers */
   borderColor?: string
+  /** Error text and border color */
   errorColor?: string
+  /** Success indicator color */
   successColor?: string
 
   // Typography
@@ -20,7 +43,14 @@ export interface ByofTheme {
   borderRadius?: string
   padding?: string
 
-  // Custom CSS variables (key without -- prefix, value)
+  /**
+   * Custom CSS variables (key without -- prefix, value).
+   *
+   * Available variables for theming:
+   * - `byof-bg-secondary`: Secondary background (inputs, iframe container)
+   * - `byof-text-muted`: Muted/secondary text color
+   * - `byof-error-bg`: Error message background color
+   */
   customVariables?: Record<string, string>
 }
 
@@ -30,12 +60,32 @@ export interface ByofSandboxOptions {
   allowlist?: string[]
 }
 
+/** Auth headers type - simple key-value pairs */
+export type AuthHeaders = Record<string, string>
+
+/** Callback to get auth headers for API calls in generated HTML */
+export type GetAuthHeadersFn = () => AuthHeaders | Promise<AuthHeaders>
+
 /** Callback types for lifecycle events */
 export interface ByofCallbacks {
   onHtmlGenerated?: (html: string, title?: string) => void
   onError?: (error: ByofError) => void
   onSaveComplete?: (ref: SavedByofRef) => void
   onLoadComplete?: (ref: SavedByofRef) => void
+}
+
+/** Options for customizing the LLM system prompt */
+export interface ByofPromptConfig {
+  /** Completely replace the default system prompt */
+  systemPrompt?: string
+  /** Append additional instructions to the default prompt */
+  systemPromptSuffix?: string
+  /** Custom prompt builder function */
+  buildSystemPrompt?: (options: {
+    apiSpec?: string | undefined
+    apiBaseUrl?: string | undefined
+    allowedOrigins?: string[] | undefined
+  }) => string
 }
 
 /** Main initialization options */
@@ -58,6 +108,31 @@ export interface ByofInitOptions extends ByofCallbacks {
   sandbox?: ByofSandboxOptions
   /** Theme configuration */
   theme?: ByofTheme
+  /** System prompt customization */
+  prompt?: ByofPromptConfig
+
+  /**
+   * Callback to get auth headers for API calls in generated HTML.
+   * Called before each HTML load to support token refresh.
+   *
+   * @example
+   * // JWT token
+   * getAuthHeaders: () => ({
+   *   'Authorization': `Bearer ${localStorage.getItem('token')}`
+   * })
+   *
+   * @example
+   * // Async with refresh
+   * getAuthHeaders: async () => {
+   *   await authService.refreshIfNeeded()
+   *   return { 'Authorization': `Bearer ${authService.token}` }
+   * }
+   *
+   * @example
+   * // API Key
+   * getAuthHeaders: () => ({ 'X-API-Key': 'sk-...' })
+   */
+  getAuthHeaders?: GetAuthHeadersFn
 
   /** Pluggable logger for observability */
   logger?: ByofLogger
@@ -85,14 +160,13 @@ export interface ByofMessage {
 /** Request payload sent to the chat endpoint */
 export interface ChatRequest {
   messages: Array<{ role: string; content: string }>
-  apiSpec: string
+  /** System prompt for the LLM (built by the library) */
+  systemPrompt: string
+  /** API spec as JSON string (for reference, also embedded in systemPrompt) */
+  apiSpec?: string
   context?: {
     projectId?: string
     userId?: string
-  }
-  instructions: {
-    outputFormat: 'single_html'
-    allowedOrigins: string[]
   }
 }
 

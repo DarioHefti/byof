@@ -133,6 +133,65 @@
     - Proper error handling and validation
   - Updated frontend example with getting started instructions
 
+## Current Issues
+
+- [x] Fixed NETWORK_ERROR: "Chat request timed out or was aborted"
+  - Root cause 1: Azure Responses API returns content with `type: "output_text"` instead of `type: "text"`
+  - Root cause 2: Default timeout was 60s, AI generation can take longer
+  - Fix 1: Updated `examples/backend/server.js` to handle `output_text` content type
+  - Fix 2: Increased default timeout from 60s to 300s (5 min) in `src/chat/client.ts`
+
+- [x] Improved LLM system prompt for better HTML generation
+  - Added comprehensive context about BYOF library
+  - Explained sandbox constraints and security model
+  - Provided clear API integration instructions
+  - Added design guidelines and example structure
+  - **Explicitly forbade localStorage/sessionStorage** - must use API
+  - Added concrete fetch() examples with base URL
+
+- [x] Fixed sandbox security warning
+  - Removed `allow-same-origin` from iframe sandbox attributes
+  - This blocks localStorage/sessionStorage access (enforces API usage)
+  - fetch() to external APIs still works via CSP
+  - Eliminates "can remove its sandboxing" browser warning
+
+- [x] Fixed CORS issues with API calls
+  - Updated LLM prompt to use correct `http://localhost:3001` base URL
+  - Added smart base URL detection (prefers localhost for development)
+  - Updated vanilla example allowlist to explicit ports instead of wildcards
+  - Added `'self'` to CSP `connect-src` directive
+
+- [x] Added actual REST API endpoints to example backend
+  - Added full CRUD for `/users` endpoint (GET, POST, PUT, DELETE)
+  - Added in-memory data store with 5 seed users
+  - Updated vanilla example API spec to match actual endpoints
+  - Now generated UIs can actually call working API endpoints!
+  - Endpoints: GET /users, GET /users/:id, POST /users, PUT /users/:id, DELETE /users/:id
+
+- [x] Moved system prompt to library (developer-overridable)
+  - Created `src/prompt/builder.ts` with minimal system prompt
+  - Added `buildSystemPrompt()`, `buildDefaultPrompt()`, `getApiBaseUrl()` exports
+  - Added `ByofPromptConfig` type with three override options:
+    - `systemPrompt`: Complete replacement
+    - `systemPromptSuffix`: Append to default
+    - `buildSystemPrompt`: Custom builder function
+  - Updated `ChatRequest` to include `systemPrompt` field
+  - Library now builds prompt and sends to backend (backend just forwards it)
+  - Simplified example backend to use the library-provided prompt
+  - Added 14 tests for prompt builder (total: 115 tests)
+
+- [x] Added framework-agnostic auth support via `getAuthHeaders` callback
+  - Added `getAuthHeaders?: () => AuthHeaders | Promise<AuthHeaders>` to `ByofInitOptions`
+  - Created `src/sandbox/auth.ts` with auth injection utilities:
+    - `generateAuthScript()` - Creates script tag with escaped JSON
+    - `injectAuthIntoHtml()` - Injects auth into HTML document
+    - `hasAuthInjection()` - Checks if auth is already injected
+  - Auth headers are injected as `window.__BYOF_AUTH__` in the iframe
+  - Updated prompt builder to instruct LLM to use auth headers in fetch() calls
+  - Called before each HTML load to support token refresh
+  - Works with any auth system: JWT, API keys, session tokens, etc.
+  - Added 13 tests for auth injection (total: 128 tests)
+
 ## All Tasks Complete!
 
 ---
@@ -146,5 +205,7 @@
 | Save/Load Client | 19      |
 | Sandbox CSP      | 21      |
 | Sandbox Runner   | 23      |
+| Sandbox Auth     | 13      |
 | Core Integration | 19      |
-| **Total**        | **101** |
+| Prompt Builder   | 14      |
+| **Total**        | **128** |

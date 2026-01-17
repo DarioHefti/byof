@@ -70,6 +70,10 @@ export {
   isIframeEmpty,
   validateHtml,
   basicSanitize,
+  AUTH_GLOBAL_NAME,
+  generateAuthScript,
+  injectAuthIntoHtml,
+  hasAuthInjection,
 } from './sandbox'
 
 export type {
@@ -78,6 +82,11 @@ export type {
   SandboxResult,
   IframeSandboxConfig,
 } from './sandbox'
+
+// Re-export prompt builder utilities
+export { buildSystemPrompt, buildDefaultPrompt, getApiBaseUrl } from './prompt'
+
+export type { PromptOptions, PromptConfig } from './prompt'
 
 // Re-export main factory function
 export { createByof } from './core'

@@ -70,8 +70,8 @@ export function generateCsp(options: CspOptions): string {
     // Fonts: self + allowed origins
     'font-src': ["'self'", ...allowedOrigins],
 
-    // Connect (fetch/XHR): only allowed origins
-    'connect-src': [...allowedOrigins],
+    // Connect (fetch/XHR): self + allowed origins
+    'connect-src': ["'self'", ...allowedOrigins],
 
     // Media: self + allowed origins
     'media-src': ["'self'", ...allowedOrigins],

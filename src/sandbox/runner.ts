@@ -50,16 +50,24 @@ export interface IframeSandboxConfig {
 
 /**
  * Default iframe sandbox attributes for security
+ *
+ * Note: We intentionally DO NOT include 'allow-same-origin' to prevent
+ * the sandboxed content from accessing the parent page's origin.
+ * This means:
+ * - localStorage/sessionStorage will be blocked (opaque origin)
+ * - Cookies will be blocked
+ * - fetch() to external APIs still works (controlled by CSP)
+ *
  * - allow-scripts: Required for JS execution
- * - allow-forms: Allow form submissions
- * - allow-same-origin: Required for some APIs but sandboxed via CSP
- * - allow-popups: Allow window.open (controlled by CSP)
+ * - allow-forms: Allow form submissions within the iframe
+ * - allow-popups: Allow window.open for "open in new tab" features
+ * - allow-popups-to-escape-sandbox: Allow popups to have normal permissions
  */
 const DEFAULT_SANDBOX_ATTRS = [
   'allow-scripts',
   'allow-forms',
-  'allow-same-origin',
   'allow-popups',
+  'allow-popups-to-escape-sandbox',
 ] as const
 
 // ============================================================================

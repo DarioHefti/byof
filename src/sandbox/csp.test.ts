@@ -13,8 +13,9 @@ describe('generateCsp', () => {
       allowedOrigins: ['https://api.example.com', 'https://cdn.example.com'],
     })
 
+    // connect-src includes 'self' plus the allowed origins
     expect(csp).toContain(
-      'connect-src https://api.example.com https://cdn.example.com'
+      "connect-src 'self' https://api.example.com https://cdn.example.com"
     )
   })
 
