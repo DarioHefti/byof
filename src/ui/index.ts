@@ -1,4 +1,4 @@
-export { renderUI, cleanupStyles } from './render'
+export { renderUI, cleanupStyles, updateFullscreenIcon } from './render'
 export type { UIElements, UICallbacks } from './render'
 
 export {

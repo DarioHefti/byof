@@ -1,6 +1,7 @@
 import type { ByofMessage } from '../types'
 
 import type { UIElements } from './render'
+import { updateFullscreenIcon } from './render'
 
 export interface SavedItem {
   id: string
@@ -227,9 +228,11 @@ function updateSandboxVisibility(
   if (currentHtml) {
     elements.sandboxIframe.style.display = 'block'
     elements.sandboxPlaceholder.style.display = 'none'
+    elements.sandboxContainer.classList.add('has-content')
   } else {
     elements.sandboxIframe.style.display = 'none'
     elements.sandboxPlaceholder.style.display = 'block'
+    elements.sandboxContainer.classList.remove('has-content')
   }
 }
 
@@ -294,16 +297,25 @@ export function clearSandbox(elements: UIElements): void {
 }
 
 /**
- * Toggle fullscreen mode
+ * Toggle fullscreen mode and update button icon
  */
-export function toggleFullscreen(container: HTMLElement): boolean {
+export function toggleFullscreen(
+  container: HTMLElement,
+  fullscreenButton?: HTMLButtonElement
+): boolean {
   const isFullscreen = container.classList.contains('byof-fullscreen')
 
   if (isFullscreen) {
     container.classList.remove('byof-fullscreen')
+    if (fullscreenButton) {
+      updateFullscreenIcon(fullscreenButton, false)
+    }
     return false
   } else {
     container.classList.add('byof-fullscreen')
+    if (fullscreenButton) {
+      updateFullscreenIcon(fullscreenButton, true)
+    }
     return true
   }
 }
