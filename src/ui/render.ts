@@ -217,6 +217,9 @@ function createChatSection(callbacks: UICallbacks): {
 
   const messagesContainer = document.createElement('div')
   messagesContainer.className = 'byof-messages'
+  messagesContainer.setAttribute('role', 'log')
+  messagesContainer.setAttribute('aria-live', 'polite')
+  messagesContainer.setAttribute('aria-label', 'Chat messages')
 
   const inputArea = document.createElement('div')
   inputArea.className = 'byof-input-area'
@@ -225,6 +228,7 @@ function createChatSection(callbacks: UICallbacks): {
   inputTextarea.className = 'byof-textarea'
   inputTextarea.placeholder = 'Describe the UI you want to create...'
   inputTextarea.rows = 1
+  inputTextarea.setAttribute('aria-label', 'Enter your UI description')
 
   const sendButton = document.createElement('button')
   sendButton.className = 'byof-btn byof-btn-primary'
@@ -298,6 +302,7 @@ function createControls(callbacks: UICallbacks): {
   saveNameInput.className = 'byof-input'
   saveNameInput.type = 'text'
   saveNameInput.placeholder = 'Name (optional)'
+  saveNameInput.setAttribute('aria-label', 'Name for saved UI (optional)')
 
   const saveButton = document.createElement('button')
   saveButton.className = 'byof-btn byof-btn-primary'
@@ -316,6 +321,7 @@ function createControls(callbacks: UICallbacks): {
 
   const loadSelect = document.createElement('select')
   loadSelect.className = 'byof-select'
+  loadSelect.setAttribute('aria-label', 'Select a previously saved UI to load')
   // Add placeholder option
   const placeholderOption = document.createElement('option')
   placeholderOption.value = ''
@@ -375,6 +381,10 @@ function createSandboxSection(callbacks: UICallbacks): {
   fullscreenButton.textContent = 'Fullscreen'
   fullscreenButton.type = 'button'
   fullscreenButton.title = 'Toggle fullscreen'
+  fullscreenButton.setAttribute(
+    'aria-label',
+    'Toggle fullscreen mode for the generated UI'
+  )
   fullscreenButton.addEventListener('click', () => {
     callbacks.onFullscreen()
   })
@@ -384,6 +394,10 @@ function createSandboxSection(callbacks: UICallbacks): {
   newTabButton.textContent = 'Open in New Tab'
   newTabButton.type = 'button'
   newTabButton.title = 'Open in new tab'
+  newTabButton.setAttribute(
+    'aria-label',
+    'Open the generated UI in a new browser tab'
+  )
   newTabButton.addEventListener('click', () => {
     callbacks.onNewTab()
   })
@@ -397,6 +411,7 @@ function createSandboxSection(callbacks: UICallbacks): {
 
   const sandboxIframe = document.createElement('iframe')
   sandboxIframe.className = 'byof-sandbox-iframe'
+  sandboxIframe.title = 'Generated UI preview'
   // Note: sandbox attributes are configured by loadIntoIframe() for proper security
   sandboxIframe.style.display = 'none'
 

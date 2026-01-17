@@ -1,6 +1,15 @@
 import { z } from 'zod'
 
 // ============================================================================
+// Shared Schemas
+// ============================================================================
+
+/** Valid message roles */
+export const messageRoleSchema = z.enum(['user', 'assistant', 'system'])
+
+export type MessageRole = z.infer<typeof messageRoleSchema>
+
+// ============================================================================
 // Chat Response Validation
 // ============================================================================
 
@@ -35,7 +44,7 @@ export const loadResponseSchema = z.object({
   messages: z
     .array(
       z.object({
-        role: z.string(),
+        role: messageRoleSchema,
         content: z.string(),
         ts: z.number(),
       })

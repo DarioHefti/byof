@@ -379,4 +379,448 @@ describe('createByof', () => {
 
     instance.destroy()
   })
+
+  it('should throw with proper error when mount is not an HTMLElement', () => {
+    const notAnElement = { nodeType: 1 } // Object that's not an HTMLElement
+
+    expect(() =>
+      createByof({
+        mount: notAnElement as unknown as HTMLElement,
+        chatEndpoint: 'https://api.example.com/chat',
+        logger: testLogger,
+      })
+    ).toThrow('mount must be a valid HTMLElement')
+  })
+
+  it('should successfully save and call onSaveComplete callback', async () => {
+    const onSaveComplete = vi.fn()
+
+    // First call for list (on init)
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ items: [] }),
+      } as Response)
+      // Second call for chat
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            html: '<html><body>Test</body></html>',
+            title: 'Test UI',
+          }),
+      } as Response)
+      // Third call for save
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: 'saved-123',
+            name: 'My UI',
+            updatedAt: '2024-01-01T00:00:00Z',
+          }),
+      } as Response)
+      // Fourth call for list refresh after save
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            items: [{ id: 'saved-123', name: 'My UI' }],
+          }),
+      } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      saveEndpoint: 'https://api.example.com/save',
+      onSaveComplete,
+      logger: testLogger,
+    })
+
+    // Wait for initial list load
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    // Simulate sending a message by finding and triggering the send button
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Create a test UI'
+    sendButton.click()
+
+    // Wait for chat response
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Now save
+    const result = await instance.saveCurrent('My UI')
+
+    expect(result.id).toBe('saved-123')
+    expect(onSaveComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'saved-123' })
+    )
+
+    instance.destroy()
+  })
+
+  it('should load saved UI and call onLoadComplete callback', async () => {
+    const onLoadComplete = vi.fn()
+
+    // Mock responses
+    vi.mocked(globalThis.fetch)
+      // Initial list
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            items: [{ id: 'ui-123', name: 'Saved UI' }],
+          }),
+      } as Response)
+      // Load response
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: 'ui-123',
+            name: 'Saved UI',
+            html: '<html><body>Loaded content</body></html>',
+            messages: [{ role: 'user', content: 'Test', ts: 1234567890 }],
+          }),
+      } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      saveEndpoint: 'https://api.example.com/save',
+      onLoadComplete,
+      logger: testLogger,
+    })
+
+    // Wait for initial list
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    // Load a saved UI
+    await instance.loadSaved('ui-123')
+
+    expect(onLoadComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'ui-123', name: 'Saved UI' })
+    )
+
+    instance.destroy()
+  })
+
+  it('should call onHtmlGenerated when HTML is generated', async () => {
+    const onHtmlGenerated = vi.fn()
+
+    // Mock chat response
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          html: '<html><body>Generated</body></html>',
+          title: 'Generated UI',
+        }),
+    } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      onHtmlGenerated,
+      logger: testLogger,
+    })
+
+    // Simulate sending a message
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Create something'
+    sendButton.click()
+
+    // Wait for response
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(onHtmlGenerated).toHaveBeenCalledWith(
+      '<html><body>Generated</body></html>',
+      'Generated UI'
+    )
+
+    instance.destroy()
+  })
+
+  it('should handle chat errors and show error in UI', async () => {
+    const onError = vi.fn()
+
+    // Mock failed chat response
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: () => Promise.resolve('Server error'),
+    } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      onError,
+      logger: testLogger,
+    })
+
+    // Simulate sending a message
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Create something'
+    sendButton.click()
+
+    // Wait for error handling
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: ByofErrorCode.CHAT_ERROR,
+      })
+    )
+
+    // Error should be displayed in UI
+    const errorDisplay = mountElement.querySelector('.byof-error')
+    expect(errorDisplay?.classList.contains('visible')).toBe(true)
+
+    instance.destroy()
+  })
+
+  it('should inject auth headers when getAuthHeaders is provided', async () => {
+    const getAuthHeaders = vi.fn().mockReturnValue({
+      Authorization: 'Bearer test-token',
+    })
+
+    // Mock responses
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          html: '<html><head></head><body>Test</body></html>',
+          title: 'Test',
+        }),
+    } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      getAuthHeaders,
+      logger: testLogger,
+    })
+
+    // Simulate sending a message
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Create something'
+    sendButton.click()
+
+    // Wait for response
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Auth headers should have been called
+    expect(getAuthHeaders).toHaveBeenCalled()
+
+    instance.destroy()
+  })
+
+  it('should handle async getAuthHeaders', async () => {
+    const getAuthHeaders = vi.fn().mockResolvedValue({
+      Authorization: 'Bearer async-token',
+    })
+
+    // Mock responses
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          html: '<html><head></head><body>Test</body></html>',
+          title: 'Test',
+        }),
+    } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      getAuthHeaders,
+      logger: testLogger,
+    })
+
+    // Simulate sending a message
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Create something'
+    sendButton.click()
+
+    // Wait for response
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Async auth headers should have been called
+    expect(getAuthHeaders).toHaveBeenCalled()
+
+    instance.destroy()
+  })
+
+  it('should use custom timeProvider', async () => {
+    const mockTime = 1234567890000
+    const timeProvider = {
+      now: vi.fn().mockReturnValue(mockTime),
+      isoString: vi.fn().mockReturnValue('2009-02-13T23:31:30.000Z'),
+    }
+
+    // Mock chat response
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          html: '<html><body>Test</body></html>',
+          title: 'Test',
+        }),
+    } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      timeProvider,
+      logger: testLogger,
+    })
+
+    // Simulate sending a message
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Test'
+    sendButton.click()
+
+    // Wait for response
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Time provider should have been used
+    expect(timeProvider.now).toHaveBeenCalled()
+
+    instance.destroy()
+  })
+
+  it('should handle reset correctly and clear sandbox', () => {
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      logger: testLogger,
+    })
+
+    // Reset should work without errors
+    instance.reset()
+
+    // Sandbox should be cleared (placeholder visible)
+    const placeholder = mountElement.querySelector('.byof-sandbox-placeholder')
+    expect(placeholder).not.toBeNull()
+    expect((placeholder as HTMLElement).style.display).toBe('block')
+
+    instance.destroy()
+  })
+
+  it('should handle fullscreen toggle via button', () => {
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      logger: testLogger,
+    })
+
+    const fullscreenBtn = mountElement.querySelector(
+      '.byof-btn-icon'
+    ) as HTMLButtonElement
+    const sandboxContainer = mountElement.querySelector('.byof-sandbox')
+
+    // Click fullscreen button
+    fullscreenBtn.click()
+
+    expect(sandboxContainer?.classList.contains('byof-fullscreen')).toBe(true)
+
+    // Click again to toggle off
+    fullscreenBtn.click()
+
+    expect(sandboxContainer?.classList.contains('byof-fullscreen')).toBe(false)
+
+    instance.destroy()
+  })
+
+  it('should include projectId and userId in context', async () => {
+    // Mock responses
+    vi.mocked(globalThis.fetch)
+      // Initial list
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ items: [] }),
+      } as Response)
+      // Chat response
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            html: '<html><body>Test</body></html>',
+            title: 'Test',
+          }),
+      } as Response)
+
+    const instance = createByof({
+      mount: mountElement,
+      chatEndpoint: 'https://api.example.com/chat',
+      saveEndpoint: 'https://api.example.com/save',
+      projectId: 'project-123',
+      userId: 'user-456',
+      logger: testLogger,
+    })
+
+    // Wait for list
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    // Simulate sending a message
+    const textarea = mountElement.querySelector(
+      '.byof-textarea'
+    ) as HTMLTextAreaElement
+    const sendButton = mountElement.querySelector(
+      '.byof-btn-primary'
+    ) as HTMLButtonElement
+
+    textarea.value = 'Test'
+    sendButton.click()
+
+    // Wait for chat
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Check that chat was called with context
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://api.example.com/chat',
+      expect.objectContaining({
+        body: expect.stringContaining('project-123'),
+      })
+    )
+
+    instance.destroy()
+  })
 })

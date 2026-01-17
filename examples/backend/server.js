@@ -102,8 +102,13 @@ function loadFromFile(id) {
   if (!existsSync(filePath)) {
     return null
   }
-  const content = readFileSync(filePath, 'utf-8')
-  return JSON.parse(content)
+  try {
+    const content = readFileSync(filePath, 'utf-8')
+    return JSON.parse(content)
+  } catch (err) {
+    console.error(`[Storage] Error parsing ${id}:`, err.message)
+    return null
+  }
 }
 
 /**

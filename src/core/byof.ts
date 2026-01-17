@@ -72,10 +72,10 @@ export function createByof(options: ByofInitOptions): ByofInstance {
   logger.info('Creating BYOF instance', { version: VERSION })
 
   // Validate required options
-  if (!options.mount) {
+  if (!options.mount || !(options.mount instanceof HTMLElement)) {
     throw new ByofException(
       ByofErrorCode.SANDBOX_ERROR,
-      'mount element is required'
+      'mount must be a valid HTMLElement'
     )
   }
 

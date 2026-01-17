@@ -2,6 +2,12 @@
  * Shared utility functions for BYOF
  */
 
+export { fetchWithValidation } from './fetch'
+export type {
+  FetchWithValidationOptions,
+  FetchWithValidationResult,
+} from './fetch'
+
 /**
  * Combine two AbortSignals into one that aborts when either signal aborts.
  *
@@ -16,8 +22,8 @@ export function combineAbortSignals(
   const controller = new AbortController()
 
   const abort = () => controller.abort()
-  signal1.addEventListener('abort', abort)
-  signal2.addEventListener('abort', abort)
+  signal1.addEventListener('abort', abort, { once: true })
+  signal2.addEventListener('abort', abort, { once: true })
 
   // If either signal is already aborted, abort immediately
   if (signal1.aborted || signal2.aborted) {

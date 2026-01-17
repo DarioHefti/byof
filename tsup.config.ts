@@ -1,4 +1,11 @@
+import { readFileSync } from 'node:fs'
+
 import { defineConfig } from 'tsup'
+
+// Read version from package.json at build time
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
+  version: string
+}
 
 export default defineConfig([
   // Main build for npm (external dependencies)
@@ -13,6 +20,9 @@ export default defineConfig([
     target: 'es2020',
     outDir: 'dist',
     onSuccess: 'echo "Build complete!"',
+    define: {
+      __BYOF_VERSION__: JSON.stringify(pkg.version),
+    },
   },
   // Browser bundle (all dependencies included)
   {
@@ -28,5 +38,8 @@ export default defineConfig([
     target: 'es2020',
     // Bundle all dependencies for browser use
     noExternal: [/.*/],
+    define: {
+      __BYOF_VERSION__: JSON.stringify(pkg.version),
+    },
   },
 ])

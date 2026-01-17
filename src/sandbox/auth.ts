@@ -18,10 +18,14 @@ export const AUTH_GLOBAL_NAME = '__BYOF_AUTH__'
  */
 export function generateAuthScript(headers: AuthHeaders): string {
   // Escape the JSON to prevent XSS
+  // - < > & can break out of script context in HTML
+  // - Unicode line/paragraph separators can break JavaScript parsing
   const safeJson = JSON.stringify(headers)
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
 
   return `<script>window.${AUTH_GLOBAL_NAME}=${safeJson};</script>`
 }

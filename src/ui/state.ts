@@ -19,6 +19,39 @@ export interface UIState {
 }
 
 /**
+ * Tracks which parts of the UI need updating.
+ * Used internally to optimize re-renders.
+ */
+interface UIRenderState {
+  lastMessageCount: number
+  lastIsLoading: boolean
+  lastSavedItemsCount: number
+  lastError: string | null
+  lastHasHtml: boolean
+}
+
+/** Map of elements to their render state for tracking changes */
+const renderStateMap = new WeakMap<HTMLElement, UIRenderState>()
+
+/**
+ * Get or create render state for tracking UI changes
+ */
+function getRenderState(container: HTMLElement): UIRenderState {
+  let state = renderStateMap.get(container)
+  if (!state) {
+    state = {
+      lastMessageCount: 0,
+      lastIsLoading: false,
+      lastSavedItemsCount: 0,
+      lastError: null,
+      lastHasHtml: false,
+    }
+    renderStateMap.set(container, state)
+  }
+  return state
+}
+
+/**
  * Create initial UI state
  */
 export function createUIState(): UIState {
@@ -34,44 +67,81 @@ export function createUIState(): UIState {
 }
 
 /**
- * Update the UI to reflect the current state
+ * Update the UI to reflect the current state.
+ * Uses dirty tracking to only update changed parts.
  */
 export function updateUI(elements: UIElements, state: UIState): void {
-  // Update messages list
-  renderMessages(elements.messagesContainer, state.messages)
+  const renderState = getRenderState(elements.container)
 
-  // Update loading state (disable/enable buttons)
-  setLoadingState(elements, state.isLoading)
+  // Only update messages if count changed (optimization: append-only for new messages)
+  if (state.messages.length !== renderState.lastMessageCount) {
+    renderMessages(
+      elements.messagesContainer,
+      state.messages,
+      renderState.lastMessageCount
+    )
+    renderState.lastMessageCount = state.messages.length
+  }
 
-  // Update status indicator
-  updateStatusIndicator(elements, state.isLoading)
+  // Only update loading state if it changed
+  if (state.isLoading !== renderState.lastIsLoading) {
+    setLoadingState(elements, state.isLoading)
+    updateStatusIndicator(elements, state.isLoading)
+    renderState.lastIsLoading = state.isLoading
+  }
 
-  // Update saved items dropdown
-  updateSavedItemsDropdown(elements.loadSelect, state.savedItems)
+  // Only update saved items if count changed
+  if (state.savedItems.length !== renderState.lastSavedItemsCount) {
+    updateSavedItemsDropdown(elements.loadSelect, state.savedItems)
+    renderState.lastSavedItemsCount = state.savedItems.length
+  }
 
-  // Update error display
-  updateErrorDisplay(elements.errorDisplay, state.error)
+  // Only update error display if error changed
+  if (state.error !== renderState.lastError) {
+    updateErrorDisplay(elements.errorDisplay, state.error)
+    renderState.lastError = state.error
+  }
 
-  // Update sandbox visibility
-  updateSandboxVisibility(elements, state.currentHtml)
+  // Only update sandbox visibility if html presence changed
+  const hasHtml = state.currentHtml !== null
+  if (hasHtml !== renderState.lastHasHtml) {
+    updateSandboxVisibility(elements, state.currentHtml)
+    renderState.lastHasHtml = hasHtml
+  }
 }
 
 /**
- * Render messages into the container
+ * Render messages into the container.
+ * Optimized to only append new messages since lastRenderedCount.
+ *
+ * @param container - The messages container element
+ * @param messages - All messages to display
+ * @param lastRenderedCount - Number of messages already rendered (for incremental updates)
  */
-function renderMessages(container: HTMLElement, messages: ByofMessage[]): void {
-  // Clear existing messages
-  container.innerHTML = ''
+function renderMessages(
+  container: HTMLElement,
+  messages: ByofMessage[],
+  lastRenderedCount: number = 0
+): void {
+  // If we have fewer messages than before (e.g., reset), clear and re-render all
+  if (messages.length < lastRenderedCount) {
+    container.innerHTML = ''
+    lastRenderedCount = 0
+  }
 
-  for (const message of messages) {
+  // Only append new messages
+  const newMessages = messages.slice(lastRenderedCount)
+  for (const message of newMessages) {
     const messageEl = document.createElement('div')
     messageEl.className = `byof-message byof-message-${message.role}`
     messageEl.textContent = message.content
     container.appendChild(messageEl)
   }
 
-  // Scroll to bottom
-  container.scrollTop = container.scrollHeight
+  // Scroll to bottom if we added new messages
+  if (newMessages.length > 0) {
+    container.scrollTop = container.scrollHeight
+  }
 }
 
 /**
