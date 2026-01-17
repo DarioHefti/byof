@@ -479,7 +479,7 @@ function createControls(
  */
 function createSandboxSection(
   callbacks: UICallbacks,
-  container: HTMLElement
+  _container: HTMLElement
 ): {
   sandboxSection: HTMLElement
   sandboxIframeContainer: HTMLElement

@@ -2,16 +2,6 @@
   "name": "byof",
   "version": "0.1.0",
   "description": "Bring Your Own Frontend - Chat-based UI generator from OpenAPI specs",
-  "author": "Dario Hefti",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DarioHefti/byof.git"
-  },
-  "bugs": {
-    "url": "https://github.com/DarioHefti/byof/issues"
-  },
-  "homepage": "https://github.com/DarioHefti/byof#readme",
   "keywords": [
     "frontend",
     "ui",
@@ -24,10 +14,17 @@
     "typescript",
     "llm"
   ],
+  "homepage": "https://github.com/DarioHefti/byof#readme",
+  "bugs": {
+    "url": "https://github.com/DarioHefti/byof/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DarioHefti/byof.git"
+  },
+  "license": "MIT",
+  "author": "Dario Hefti",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -40,6 +37,11 @@
       }
     }
   },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "directories": {
+    "example": "examples"
+  },
   "files": [
     "dist",
     "README.md",
@@ -47,10 +49,6 @@
     "SECURITY.md",
     "CHANGELOG.md"
   ],
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -68,6 +66,9 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run test:run && npm run build",
     "release": "npm run prepublishOnly && npm publish"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -89,7 +90,9 @@
     "typescript-eslint": "^8.53.0",
     "vitest": "^4.0.17"
   },
-  "dependencies": {
-    "zod": "^3.25.76"
-  }
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "module": "./dist/index.js",
+  "sideEffects": false
 }

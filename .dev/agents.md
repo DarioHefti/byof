@@ -2,6 +2,7 @@ Keep track of the tasks done in a file called: progress.md
 add a simple checklist that you will update after each task.
 
 Always update documentation and readme when necessary.
+Always run all tests after finishing your changes.
 
 I want you to strictly follow this best coding practices:
 

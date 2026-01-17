@@ -445,7 +445,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Create a test UI'
@@ -536,7 +536,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Create something'
@@ -576,7 +576,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Create something'
@@ -625,7 +625,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Create something'
@@ -667,7 +667,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Create something'
@@ -711,7 +711,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Test'
@@ -751,8 +751,9 @@ describe('createByof', () => {
       logger: testLogger,
     })
 
+    // The fullscreen button is inside .byof-sandbox-controls
     const fullscreenBtn = mountElement.querySelector(
-      '.byof-btn-icon'
+      '.byof-sandbox-controls .byof-btn-icon'
     ) as HTMLButtonElement
     const sandboxContainer = mountElement.querySelector('.byof-sandbox')
 
@@ -804,7 +805,7 @@ describe('createByof', () => {
       '.byof-textarea'
     ) as HTMLTextAreaElement
     const sendButton = mountElement.querySelector(
-      '.byof-btn-primary'
+      '.byof-btn-send'
     ) as HTMLButtonElement
 
     textarea.value = 'Test'
@@ -813,9 +814,14 @@ describe('createByof', () => {
     // Wait for chat
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    // Check that chat was called with context
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/chat',
+    // Check that chat was called with context containing projectId
+    // The second call should be to the chat endpoint (first is list)
+    const fetchCalls = vi.mocked(globalThis.fetch).mock.calls
+    const chatCall = fetchCalls.find(
+      (call) => call[0] === 'https://api.example.com/chat'
+    )
+    expect(chatCall).toBeDefined()
+    expect(chatCall![1]).toEqual(
       expect.objectContaining({
         body: expect.stringContaining('project-123'),
       })
