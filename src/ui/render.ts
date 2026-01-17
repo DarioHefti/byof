@@ -397,11 +397,7 @@ function createSandboxSection(callbacks: UICallbacks): {
 
   const sandboxIframe = document.createElement('iframe')
   sandboxIframe.className = 'byof-sandbox-iframe'
-  // Set sandbox attribute - using setAttribute for better compatibility
-  sandboxIframe.setAttribute(
-    'sandbox',
-    'allow-scripts allow-forms allow-same-origin allow-popups'
-  )
+  // Note: sandbox attributes are configured by loadIntoIframe() for proper security
   sandboxIframe.style.display = 'none'
 
   const sandboxPlaceholder = document.createElement('div')

@@ -257,6 +257,29 @@
     - dist/index.d.ts (TypeScript declarations)
     - dist/index.browser.js (IIFE bundle)
 
+- [x] Task 15: Cleanup and Simplification
+  - Created shared `src/utils/` module for common utilities:
+    - `combineAbortSignals()` - Extracted from duplicated code in chat/save clients
+    - `isAbortError()` - Cross-environment AbortError detection
+  - Removed unnecessary files:
+    - `src/save/.gitkeep` (directory now has content)
+  - Simplified public API exports in `src/index.ts`:
+    - Organized into Main API, Core Types, Advanced API, and Low-level API sections
+    - Removed internal UI exports that developers don't need
+    - Better documentation with JSDoc examples
+  - Fixed security issue in `src/ui/render.ts`:
+    - Removed hardcoded `allow-same-origin` sandbox attribute
+    - Sandbox attributes now set by `loadIntoIframe()` for proper security
+  - Reorganized development documentation:
+    - Moved `tasks/`, `plan.md`, `agents.md` to `.dev/` folder
+    - Keeps production docs clean while preserving dev history
+  - Simplified README.md:
+    - Cleaner quick start section
+    - More accurate API documentation
+    - Removed outdated import paths
+  - Added 12 new tests for utils module (total: 140 tests)
+  - All tests, lint, typecheck, and build passing
+
 ## All Tasks Complete!
 
 ---
@@ -273,7 +296,8 @@
 | Sandbox Auth     | 13      |
 | Core Integration | 19      |
 | Prompt Builder   | 14      |
-| **Total**        | **128** |
+| Utils            | 12      |
+| **Total**        | **140** |
 
 ## Package Summary
 

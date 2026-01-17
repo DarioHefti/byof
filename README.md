@@ -1,325 +1,218 @@
 # BYOF
 
-**Bring Your Own Frontend** — A typescript library that lets users generate their own frontend while using your app.
+**Bring Your Own Frontend** - A TypeScript library that lets users generate custom UIs through AI chat.
 
-```
-┌─────────────────────────────────────┐
-│  Chat with AI                       │
-├─────────────────────────────────────┤
-│  > Build me a todo app              │
-│                                     │
-│  ┌─────────────────────────────┐    │
-│  │ Generated App Preview       │    │
-│  │ ┌─────────────────────────┐ │    │
-│  │ │ ☐ Buy groceries         │ │    │
-│  │ │ ☑ Walk the dog          │ │    │
-│  │ └─────────────────────────┘ │    │
-│  └─────────────────────────────┘    │
-└─────────────────────────────────────┘
-```
-
-## Features
-
-- **Chat-driven UI generation** — Describe what you want, get a working HTML app
-- **OpenAPI-aware** — Generated apps know how to call your API
-- **Sandboxed execution** — Apps run in secure iframes with CSP protection
-- **Save & load** — Persist and restore generated applications
-- **Fully themeable** — CSS variables + theme objects for complete customization
-- **Zero dependencies** — Pure TypeScript, works with any framework
-- **Type-safe** — Full TypeScript support with exported types for backends
-
-## Quick Start
+## Installation
 
 ```bash
 npm install byof
 ```
 
+## Quick Start
+
 ```typescript
-import { createByof } from 'byof';
+import { createByof } from 'byof'
 
 const byof = createByof({
-  mount: document.getElementById('app'),
+  mount: document.getElementById('app')!,
   chatEndpoint: '/api/chat',
-  saveEndpoint: '/api/byof',
-  apiSpec: openApiJsonString,
-  sandbox: {
-    allowlist: ['https://api.example.com']
-  },
-  onHtmlGenerated: (html) => console.log('Generated:', html.length, 'bytes'),
-  onError: (error) => console.error('Error:', error)
-});
+  onHtmlGenerated: (html) => console.log('Generated!'),
+})
+
+// Later: cleanup
+byof.destroy()
 ```
+
+That's it! BYOF renders a chat UI and sandbox for generated apps.
 
 ## How It Works
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  User    │───▶│  BYOF    │───▶│  Your    │───▶│  LLM     │
-│  Input   │    │  Client  │    │  Backend │    │  (Claude │
-└──────────┘    └──────────┘    └──────────┘    │  / GPT)  │
-                     │                          └──────────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │  Sandboxed   │
-              │  iframe with │
-              │  generated   │
-              │  HTML app    │
-              └──────────────┘
+User Input → BYOF → Your Backend → LLM → Generated HTML → Sandboxed Iframe
 ```
 
-1. **User describes** what they want in the chat
-2. **BYOF sends** the request + OpenAPI spec to your backend
-3. **Your backend** calls an LLM (Anthropic/OpenAI) with the prompt
-4. **LLM generates** a complete single-file HTML app
-5. **BYOF renders** the app in a sandboxed iframe
-6. **User can save** the generated app for later
+1. User describes what they want in the chat
+2. BYOF sends the request to your backend
+3. Your backend calls an LLM (Claude/GPT)
+4. LLM generates a single-file HTML app
+5. BYOF renders it in a secure sandboxed iframe
 
 ## Configuration
 
 ```typescript
-interface ByofInitOptions {
+const byof = createByof({
   // Required
-  mount: HTMLElement;              // Where to render the UI
-  chatEndpoint: string;            // Your backend chat endpoint
+  mount: document.getElementById('app')!,
+  chatEndpoint: '/api/chat',
 
-  // API Spec (one required)
-  apiSpec?: string;                // OpenAPI JSON as string
-  apiSpecUrl?: string;             // URL to fetch OpenAPI JSON
+  // Optional: API specification (so generated UIs know your API)
+  apiSpec: '{ "openapi": "3.0.0", ... }', // or:
+  apiSpecUrl: '/api/openapi.json',
 
-  // Optional
-  saveEndpoint?: string;           // Backend for save/load functionality
-  projectId?: string;              // Group saved items by project
-  userId?: string;                 // Associate with a user
-  
-  sandbox?: {
-    allowlist?: string[];          // Origins the generated app can call
-  };
-  
-  theme?: ByofTheme;               // Customization options
-  
-  // Callbacks
-  onHtmlGenerated?: (html: string) => void;
-  onError?: (error: ByofError) => void;
-  onSaveComplete?: (ref: SavedByofRef) => void;
-  onLoadComplete?: (data: LoadedByof) => void;
-}
-```
+  // Optional: Save/Load functionality
+  saveEndpoint: '/api/save',
 
-## Backend API Contracts
+  // Optional: Context for multi-tenant apps
+  projectId: 'project-123',
+  userId: 'user-456',
 
-BYOF expects your backend to implement these endpoints:
+  // Optional: Security - allowed origins for generated app API calls
+  sandbox: {
+    allowlist: ['https://api.example.com', 'http://localhost:3001'],
+  },
 
-### Chat Endpoint
+  // Optional: Auth headers for generated apps
+  getAuthHeaders: () => ({
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  }),
 
-```
-POST {chatEndpoint}
-
-Request:
-{
-  "messages": [{ "role": "user" | "assistant", "content": "..." }],
-  "apiSpec": "{ OpenAPI JSON }",
-  "context": { "projectId": "...", "userId": "..." },
-  "instructions": { "outputFormat": "single_html", "sandboxRules": {...} }
-}
-
-Response:
-{
-  "html": "<!DOCTYPE html>...",
-  "title": "My Todo App",       // optional
-  "warnings": ["..."]           // optional
-}
-```
-
-### Save Endpoint (Optional)
-
-```
-POST {saveEndpoint}/save
-GET  {saveEndpoint}/load?id=...
-GET  {saveEndpoint}/list?projectId=...
-```
-
-See [Backend Types](#backend-types) for full TypeScript definitions.
-
-## Theming
-
-```typescript
-createByof({
-  // ...
+  // Optional: Theme customization
   theme: {
-    colors: {
-      primary: '#6366f1',
-      background: '#0f172a',
-      surface: '#1e293b',
-      text: '#f8fafc',
-      textMuted: '#94a3b8',
-      border: '#334155',
-      error: '#ef4444',
-      success: '#22c55e'
-    },
-    fonts: {
-      sans: 'Inter, system-ui, sans-serif',
-      mono: 'JetBrains Mono, monospace'
-    },
-    spacing: {
-      xs: '0.25rem',
-      sm: '0.5rem',
-      md: '1rem',
-      lg: '1.5rem',
-      xl: '2rem'
-    },
-    radii: {
-      sm: '0.25rem',
-      md: '0.5rem',
-      lg: '0.75rem'
-    }
-  }
-});
-```
+    primaryColor: '#6366f1',
+    backgroundColor: '#0f172a',
+    textColor: '#f8fafc',
+  },
 
-Or use CSS variables directly:
-
-```css
-:root {
-  --byof-primary: #6366f1;
-  --byof-bg: #0f172a;
-  --byof-surface: #1e293b;
-  --byof-text: #f8fafc;
-  --byof-text-muted: #94a3b8;
-  --byof-border: #334155;
-  --byof-error: #ef4444;
-  --byof-success: #22c55e;
-  --byof-font-sans: Inter, system-ui, sans-serif;
-  --byof-font-mono: JetBrains Mono, monospace;
-  --byof-radius-sm: 0.25rem;
-  --byof-radius-md: 0.5rem;
-  --byof-radius-lg: 0.75rem;
-}
+  // Callbacks
+  onHtmlGenerated: (html, title) => console.log('Generated:', title),
+  onError: (error) => console.error(error.code, error.message),
+  onSaveComplete: (ref) => console.log('Saved:', ref.id),
+  onLoadComplete: (ref) => console.log('Loaded:', ref.id),
+})
 ```
 
 ## Instance Methods
 
 ```typescript
-const byof = createByof(options);
-
 // Update configuration
-byof.setApiSpec(newSpec);
-byof.setChatEndpoint(newUrl);
-byof.setSaveEndpoint(newUrl);
+byof.setApiSpec(newSpec)
+byof.setChatEndpoint('/api/v2/chat')
+byof.setSaveEndpoint('/api/v2/save')
 
 // Save/Load
-await byof.saveCurrent('My App');     // Returns SavedByofRef
-await byof.loadSaved('abc123');       // Restores saved state
+const ref = await byof.saveCurrent('My App')
+await byof.loadSaved(ref.id)
 
 // Reset conversation
-byof.reset();
+byof.reset()
 
 // Cleanup
-byof.destroy();
+byof.destroy()
 ```
+
+## Backend Implementation
+
+BYOF sends requests to your backend endpoints. Here's what to implement:
+
+### Chat Endpoint
+
+```typescript
+// POST /api/chat
+interface ChatRequest {
+  messages: Array<{ role: string; content: string }>
+  systemPrompt: string // Built by BYOF - pass to LLM as system message
+  apiSpec?: string // Your OpenAPI spec (also in systemPrompt)
+  context?: { projectId?: string; userId?: string }
+}
+
+interface ChatResponse {
+  html: string // The generated single-file HTML app
+  title?: string // Optional title for the UI
+  warnings?: string[] // Optional warnings to log
+}
+```
+
+Your backend receives the `systemPrompt` from BYOF - just pass it to the LLM as the system message.
+
+### Save Endpoints (Optional)
+
+```typescript
+// POST /api/save - Save a generated UI
+// POST /api/save/load - Load by ID
+// POST /api/save/list - List saved UIs
+```
+
+See `examples/backend/server.js` for a complete implementation.
 
 ## Backend Types
 
-Import types for your backend implementation:
+Import types for your backend:
 
 ```typescript
 import type {
-  // Chat endpoint
   ChatRequest,
   ChatResponse,
-  
-  // Save endpoint
   SaveRequest,
   SaveResponse,
+  LoadRequest,
   LoadResponse,
+  ListRequest,
   ListResponse,
-  
-  // Common
-  Message,
-  ByofContext
-} from 'byof/types';
+} from 'byof'
+```
+
+## Theming
+
+Pass a theme object or use CSS variables:
+
+```typescript
+// Theme object
+createByof({
+  theme: {
+    primaryColor: '#6366f1',
+    backgroundColor: '#0f172a',
+    textColor: '#f8fafc',
+    borderColor: '#334155',
+    fontFamily: 'Inter, sans-serif',
+    borderRadius: '8px',
+  },
+})
+```
+
+```css
+/* Or CSS variables */
+.byof-container {
+  --byof-primary: #6366f1;
+  --byof-bg: #0f172a;
+  --byof-text: #f8fafc;
+  --byof-border: #334155;
+}
 ```
 
 ## Security
 
 BYOF takes security seriously:
 
-- **Sandboxed iframes** — Generated apps run without `allow-same-origin`
-- **CSP protection** — Meta tag restricts network calls to allowlisted origins
-- **No external scripts** — Generated HTML is self-contained
-- **postMessage bridge** — Safe communication between parent and iframe
+- **Sandboxed iframes** - Generated apps run in isolated iframes
+- **CSP protection** - Network calls restricted to your allowlist
+- **No localStorage** - Generated apps can't access parent storage
+- **Auth injection** - Securely pass auth headers to generated apps
 
-**Recommendations for production:**
+## Examples
 
-- Validate/sanitize HTML on your backend before saving
-- Implement rate limiting on chat endpoints
-- Require authentication for save/load operations
-- Use HTTPS everywhere
-
-## Example Backend (Python)
-
-See the [`examples/backend`](./examples/backend) folder for a complete FastAPI implementation with:
-
-- Anthropic Claude / OpenAI GPT integration
-- Todo CRUD API (for generated apps to call)
-- In-memory save/load storage
-- CORS configuration
-
-```bash
-cd examples/backend
-pip install -r requirements.txt
-ANTHROPIC_API_KEY=sk-... python app.py
-```
-
-## Development
+Run the included example:
 
 ```bash
 # Install dependencies
 npm install
 
-# Build the library
-npm run build
-
-# Run example (library + backend)
-npm run dev
-
-# Run tests
-npm run test
-
-# Type check
-npm run typecheck
-
-# Lint
-npm run lint
+# Build library + run frontend + backend
+npm run example
 ```
 
-## Architecture
+Then open http://localhost:3000
 
+## Development
+
+```bash
+npm install          # Install dependencies
+npm run build        # Build the library
+npm run dev          # Watch mode
+npm run test         # Run tests
+npm run lint         # Lint code
+npm run typecheck    # Type check
 ```
-src/
-├── index.ts          # Public API exports
-├── types/            # TypeScript interfaces
-├── ui/               # DOM-based UI renderer
-├── spec/             # OpenAPI spec loader
-├── chat/             # Chat client
-├── save/             # Save/load client
-├── sandbox/          # Iframe runner + postMessage bridge
-└── utils/            # Logger, time provider, errors
-```
-
-## Browser Support
-
-BYOF works in all modern browsers that support:
-
-- ES2020+
-- `<iframe sandbox>`
-- CSS Custom Properties
-- `fetch` API
 
 ## License
 
 MIT
-
----
-
-Built for developers who want AI-generated UIs without the complexity.

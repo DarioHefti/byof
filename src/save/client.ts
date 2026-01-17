@@ -16,6 +16,7 @@ import {
   type SaveResponse,
   defaultLogger,
 } from '../types'
+import { combineAbortSignals, isAbortError } from '../utils'
 
 // ============================================================================
 // Shared Types
@@ -177,13 +178,7 @@ export async function saveUI(options: SaveOptions): Promise<SaveResponse> {
     clearTimeout(timeoutId)
 
     // Check for AbortError (timeout or external abort)
-    const isAbortError =
-      error instanceof Error &&
-      (error.name === 'AbortError' ||
-        (error instanceof DOMException &&
-          error.code === DOMException.ABORT_ERR))
-
-    if (isAbortError) {
+    if (isAbortError(error)) {
       logger.warn('Save request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
@@ -328,13 +323,7 @@ export async function loadUI(options: LoadOptions): Promise<LoadResponse> {
     clearTimeout(timeoutId)
 
     // Check for AbortError (timeout or external abort)
-    const isAbortError =
-      error instanceof Error &&
-      (error.name === 'AbortError' ||
-        (error instanceof DOMException &&
-          error.code === DOMException.ABORT_ERR))
-
-    if (isAbortError) {
+    if (isAbortError(error)) {
       logger.warn('Load request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
@@ -475,13 +464,7 @@ export async function listSavedUIs(
     clearTimeout(timeoutId)
 
     // Check for AbortError (timeout or external abort)
-    const isAbortError =
-      error instanceof Error &&
-      (error.name === 'AbortError' ||
-        (error instanceof DOMException &&
-          error.code === DOMException.ABORT_ERR))
-
-    if (isAbortError) {
+    if (isAbortError(error)) {
       logger.warn('List request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
@@ -500,29 +483,4 @@ export async function listSavedUIs(
       error
     )
   }
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/**
- * Combine two AbortSignals into one
- */
-function combineAbortSignals(
-  signal1: AbortSignal,
-  signal2: AbortSignal
-): AbortSignal {
-  const controller = new AbortController()
-
-  const abort = () => controller.abort()
-  signal1.addEventListener('abort', abort)
-  signal2.addEventListener('abort', abort)
-
-  // If either signal is already aborted, abort immediately
-  if (signal1.aborted || signal2.aborted) {
-    controller.abort()
-  }
-
-  return controller.signal
 }

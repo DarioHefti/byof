@@ -29,6 +29,19 @@
 
 import cors from 'cors'
 import express from 'express'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
+
+// Get directory path for ES modules
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -61,8 +74,66 @@ const AI_PROVIDER = process.env.AI_PROVIDER || detectProvider(AI_API_URL)
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 
-// In-memory storage for saved UIs
-const savedUIs = new Map()
+// ============================================================================
+// File-based Storage for Saved UIs
+// ============================================================================
+
+const DATA_DIR = join(__dirname, 'data', 'saves')
+
+// Ensure data directory exists
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true })
+}
+
+/**
+ * Save a UI to a JSON file
+ */
+function saveToFile(id, data) {
+  const filePath = join(DATA_DIR, `${id}.json`)
+  writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+  console.log(`[Storage] Saved to ${filePath}`)
+}
+
+/**
+ * Load a UI from a JSON file
+ */
+function loadFromFile(id) {
+  const filePath = join(DATA_DIR, `${id}.json`)
+  if (!existsSync(filePath)) {
+    return null
+  }
+  const content = readFileSync(filePath, 'utf-8')
+  return JSON.parse(content)
+}
+
+/**
+ * List all saved UIs from files
+ */
+function listSavedFiles() {
+  if (!existsSync(DATA_DIR)) {
+    return []
+  }
+
+  const files = readdirSync(DATA_DIR).filter((f) => f.endsWith('.json'))
+  const items = []
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(DATA_DIR, file), 'utf-8')
+      const data = JSON.parse(content)
+      items.push({
+        id: data.id,
+        name: data.name,
+        updatedAt: data.updatedAt,
+        context: data.context,
+      })
+    } catch (err) {
+      console.error(`[Storage] Error reading ${file}:`, err.message)
+    }
+  }
+
+  return items
+}
 
 // ============================================================================
 // Demo REST API - In-memory data store
@@ -374,8 +445,8 @@ app.post('/api/save', (req, res) => {
   const id = generateId()
   const updatedAt = new Date().toISOString()
 
-  // Store the UI
-  savedUIs.set(id, {
+  // Store the UI to file
+  const savedData = {
     id,
     name,
     html,
@@ -384,8 +455,9 @@ app.post('/api/save', (req, res) => {
     context,
     meta,
     updatedAt,
-  })
+  }
 
+  saveToFile(id, savedData)
   console.log('[Save] Saved UI:', { id, name })
 
   const response = { id, updatedAt }
@@ -430,8 +502,8 @@ app.post('/api/save/load', (req, res) => {
     })
   }
 
-  // Find the saved UI
-  const savedUI = savedUIs.get(id)
+  // Load from file
+  const savedUI = loadFromFile(id)
   if (!savedUI) {
     return res.status(404).json({
       error: 'UI not found',
@@ -484,8 +556,8 @@ app.post('/api/save/list', (req, res) => {
 
   console.log('[List] Received request:', { projectId })
 
-  // Get all saved UIs, optionally filtered by projectId
-  let items = Array.from(savedUIs.values())
+  // Get all saved UIs from files, optionally filtered by projectId
+  let items = listSavedFiles()
 
   if (projectId) {
     items = items.filter((ui) => ui.context?.projectId === projectId)
@@ -1297,6 +1369,7 @@ app.listen(PORT, () => {
 ║                                                                ║
 ║   Server running at: http://localhost:${PORT}                    ║
 ║   AI Provider: ${aiStatus.padEnd(46)}║
+║   Storage: ./data/saves/ (JSON files)                          ║
 ║                                                                ║
 ║   Demo REST API (for generated UIs to call):                   ║
 ║   - GET    /users        - List all users                      ║

@@ -8,6 +8,7 @@ import {
   type ChatResponse,
   defaultLogger,
 } from '../types'
+import { combineAbortSignals, isAbortError } from '../utils'
 
 export interface SendChatOptions {
   endpoint: string
@@ -143,15 +144,7 @@ export async function sendChat(
     clearTimeout(timeoutId)
 
     // Check for AbortError (timeout or external abort)
-    // Use duck typing for broader compatibility across environments
-    if (
-      error instanceof Error &&
-      (error.name === 'AbortError' ||
-        (typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          (error as { code: unknown }).code === 20)) // DOMException.ABORT_ERR = 20
-    ) {
+    if (isAbortError(error)) {
       logger.warn('Chat request aborted or timed out')
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
@@ -170,25 +163,4 @@ export async function sendChat(
       error
     )
   }
-}
-
-/**
- * Combine two AbortSignals into one
- */
-function combineAbortSignals(
-  signal1: AbortSignal,
-  signal2: AbortSignal
-): AbortSignal {
-  const controller = new AbortController()
-
-  const abort = () => controller.abort()
-  signal1.addEventListener('abort', abort)
-  signal2.addEventListener('abort', abort)
-
-  // If either signal is already aborted, abort immediately
-  if (signal1.aborted || signal2.aborted) {
-    controller.abort()
-  }
-
-  return controller.signal
 }

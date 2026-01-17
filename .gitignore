@@ -28,3 +28,6 @@ coverage/
 
 # Misc
 *.tgz
+
+# Example backend data (fake database)
+examples/backend/data/saves/

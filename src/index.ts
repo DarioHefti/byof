@@ -1,10 +1,91 @@
-// Re-export all types
-export * from './types'
+/**
+ * BYOF - Bring Your Own Frontend
+ *
+ * A TypeScript library for generating custom frontend UIs through chat-based LLM interaction.
+ *
+ * @example
+ * ```typescript
+ * import { createByof } from 'byof'
+ *
+ * const byof = createByof({
+ *   mount: document.getElementById('app')!,
+ *   chatEndpoint: '/api/chat',
+ *   onHtmlGenerated: (html) => console.log('Generated!', html),
+ * })
+ *
+ * // Cleanup when done
+ * byof.destroy()
+ * ```
+ *
+ * @packageDocumentation
+ */
 
-// Re-export version
+// =============================================================================
+// Main API - What most developers need
+// =============================================================================
+
+/** Main factory function to create a BYOF instance */
+export { createByof } from './core'
+
+/** Library version */
 export { VERSION } from './version'
 
-// Re-export schemas for runtime validation
+// =============================================================================
+// Core Types - Required for TypeScript users
+// =============================================================================
+
+export type {
+  // Initialization
+  ByofInitOptions,
+  ByofInstance,
+  ByofTheme,
+  ByofSandboxOptions,
+  ByofCallbacks,
+  ByofPromptConfig,
+
+  // Messages
+  ByofMessage,
+
+  // Error handling
+  ByofError,
+
+  // Auth
+  AuthHeaders,
+  GetAuthHeadersFn,
+
+  // Backend contract types (for implementing backends)
+  ChatRequest,
+  ChatResponse,
+  SaveRequest,
+  SaveResponse,
+  LoadRequest,
+  LoadResponse,
+  ListRequest,
+  ListResponse,
+  SavedByofRef,
+
+  // Observability
+  ByofLogger,
+  TimeProvider,
+} from './types'
+
+// Export the error code const and exception class (needed for error handling)
+export {
+  ByofErrorCode,
+  ByofException,
+  defaultLogger,
+  noopLogger,
+} from './types'
+
+// =============================================================================
+// Advanced API - For customization and backend builders
+// =============================================================================
+
+// Prompt building (for custom prompt customization)
+export { buildSystemPrompt, buildDefaultPrompt, getApiBaseUrl } from './prompt'
+export type { PromptOptions, PromptConfig } from './prompt'
+
+// Zod schemas (for backend response validation)
 export {
   chatResponseSchema,
   saveResponseSchema,
@@ -21,72 +102,32 @@ export type {
   OpenApiSpecParsed,
 } from './schemas'
 
-// Re-export UI components (internal use, also available for advanced usage)
-export {
-  renderUI,
-  cleanupStyles,
-  createUIState,
-  updateUI,
-  appendMessage,
-  clearMessages,
-  showError,
-  clearError,
-  loadHtmlIntoSandbox,
-  clearSandbox,
-  toggleFullscreen,
-  styles,
-} from './ui'
+// =============================================================================
+// Low-level API - For advanced customization (rarely needed)
+// =============================================================================
 
-export type { UIElements, UICallbacks, UIState, SavedItem } from './ui'
-
-// Re-export spec loader
-export { loadSpecFromUrl, normalizeSpec, loadAndNormalizeSpec } from './spec'
-
-export type { NormalizedSpec, LoadSpecOptions } from './spec'
-
-// Re-export chat client
+// Direct API clients (if not using createByof)
 export { sendChat } from './chat'
-
 export type { SendChatOptions } from './chat'
 
-// Re-export save/load client
 export { saveUI, loadUI, listSavedUIs } from './save'
-
 export type { SaveOptions, LoadOptions, ListOptions } from './save'
 
-// Re-export sandbox utilities
+// Spec loading
+export { loadSpecFromUrl, normalizeSpec, loadAndNormalizeSpec } from './spec'
+export type { NormalizedSpec, LoadSpecOptions } from './spec'
+
+// Sandbox utilities
 export {
-  generateCsp,
-  generateCspMetaTag,
-  injectCspIntoHtml,
-  isOriginAllowed,
   prepareSandboxHtml,
   loadIntoIframe,
-  configureSandboxAttributes,
   openInNewTab,
   downloadHtml,
-  extractHtmlFromIframe,
-  clearIframe,
-  isIframeEmpty,
   validateHtml,
-  basicSanitize,
-  AUTH_GLOBAL_NAME,
-  generateAuthScript,
-  injectAuthIntoHtml,
-  hasAuthInjection,
 } from './sandbox'
 
 export type {
-  CspOptions,
   SandboxOptions,
   SandboxResult,
   IframeSandboxConfig,
 } from './sandbox'
-
-// Re-export prompt builder utilities
-export { buildSystemPrompt, buildDefaultPrompt, getApiBaseUrl } from './prompt'
-
-export type { PromptOptions, PromptConfig } from './prompt'
-
-// Re-export main factory function
-export { createByof } from './core'
