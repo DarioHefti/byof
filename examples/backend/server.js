@@ -113,11 +113,29 @@ let nextUserId = 6
 // ============================================================================
 
 /**
+ * Helper to log auth headers (for demo purposes)
+ */
+function logAuthHeaders(req, endpoint) {
+  const auth = req.headers['authorization']
+  const userId = req.headers['x-user-id']
+  const tenantId = req.headers['x-tenant-id']
+
+  if (auth || userId || tenantId) {
+    console.log(`[Auth] ${endpoint}:`, {
+      authorization: auth ? `${auth.substring(0, 30)}...` : 'none',
+      userId: userId || 'none',
+      tenantId: tenantId || 'none',
+    })
+  }
+}
+
+/**
  * GET /users
  * List all users
  */
 app.get('/users', (req, res) => {
   console.log('[Users] GET /users')
+  logAuthHeaders(req, 'GET /users')
   res.json(users)
 })
 
@@ -128,6 +146,7 @@ app.get('/users', (req, res) => {
 app.get('/users/:id', (req, res) => {
   const id = parseInt(req.params.id, 10)
   console.log('[Users] GET /users/:id', { id })
+  logAuthHeaders(req, `GET /users/${id}`)
 
   const user = users.find((u) => u.id === id)
   if (!user) {
@@ -144,6 +163,7 @@ app.get('/users/:id', (req, res) => {
 app.post('/users', (req, res) => {
   const { name, email, role } = req.body
   console.log('[Users] POST /users', { name, email, role })
+  logAuthHeaders(req, 'POST /users')
 
   // Validate required fields
   if (!name || !email) {
