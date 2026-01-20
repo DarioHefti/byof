@@ -16,7 +16,11 @@ export type MessageRole = z.infer<typeof messageRoleSchema>
 export const chatResponseSchema = z.object({
   html: z.string().min(1),
   title: z.string().optional(),
-  warnings: z.array(z.string()).optional(),
+  warnings: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .transform((v) => v ?? []),
 })
 
 export type ChatResponseParsed = z.infer<typeof chatResponseSchema>
