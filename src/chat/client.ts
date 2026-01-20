@@ -78,10 +78,13 @@ export async function sendChat(
     logger,
   })
 
+  // Normalize warnings (schema default handles undefined, this handles any edge cases)
+  const warnings = parsed.warnings ?? []
+
   logger.info('Chat response received', {
     htmlLength: parsed.html.length,
     title: parsed.title,
-    warningCount: parsed.warnings?.length ?? 0,
+    warningCount: warnings.length,
   })
 
   // Build response with exact types (exactOptionalPropertyTypes compliance)
@@ -91,8 +94,8 @@ export async function sendChat(
   if (parsed.title !== undefined) {
     chatResponse.title = parsed.title
   }
-  if (parsed.warnings !== undefined) {
-    chatResponse.warnings = parsed.warnings
+  if (warnings.length > 0) {
+    chatResponse.warnings = warnings
   }
 
   return chatResponse

@@ -1,6 +1,6 @@
 {
   "name": "@darioh/byof",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Bring Your Own Frontend - Chat-based UI generator from OpenAPI specs",
   "keywords": [
     "frontend",
