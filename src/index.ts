@@ -56,6 +56,7 @@ export type {
   // Backend contract types (for implementing backends)
   ChatRequest,
   ChatResponse,
+  DefaultHtmlResponse,
   SaveRequest,
   SaveResponse,
   LoadRequest,

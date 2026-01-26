@@ -614,6 +614,164 @@ app.get('/api/config', (req, res) => {
 })
 
 // ============================================================================
+// Default HTML Endpoint
+// ============================================================================
+
+/**
+ * GET /api/default-html
+ *
+ * Returns a default HTML template to show in the sandbox on initialization.
+ * This gives users a starting point before they generate their first UI.
+ *
+ * Response (DefaultHtmlResponse):
+ * {
+ *   html: string
+ *   title?: string
+ * }
+ */
+app.get('/api/default-html', (req, res) => {
+  console.log('[DefaultHtml] Serving default HTML template')
+
+  const html = generateDefaultHtml()
+
+  res.json({
+    html,
+    title: 'Welcome to BYOF',
+  })
+})
+
+/**
+ * Generate the default HTML welcome page
+ */
+function generateDefaultHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to BYOF</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+      padding: 40px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    .instructions {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 30px;
+      text-align: left;
+    }
+    .instructions h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #667eea;
+      margin-bottom: 16px;
+    }
+    .instructions ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #555;
+      line-height: 1.8;
+    }
+    .examples {
+      text-align: left;
+      margin-bottom: 30px;
+    }
+    .examples h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #667eea;
+      margin-bottom: 12px;
+    }
+    .example-chip {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      margin: 4px;
+      cursor: default;
+    }
+    .footer {
+      color: #999;
+      font-size: 13px;
+    }
+    .footer a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🎨</div>
+    <h1>Welcome to BYOF</h1>
+    <p class="subtitle">Bring Your Own Frontend - Generate UIs with AI</p>
+
+    <div class="instructions">
+      <h2>How to Get Started</h2>
+      <ol>
+        <li>Type a description of the UI you want in the chat</li>
+        <li>The AI will generate a complete HTML application</li>
+        <li>Your generated UI will appear right here!</li>
+        <li>Iterate by sending more messages to refine it</li>
+      </ol>
+    </div>
+
+    <div class="examples">
+      <h2>Try These Examples</h2>
+      <span class="example-chip">Create a user dashboard</span>
+      <span class="example-chip">Build a contact form</span>
+      <span class="example-chip">Make a data table</span>
+      <span class="example-chip">Design a profile card</span>
+    </div>
+
+    <p class="footer">
+      Powered by <a href="https://github.com/example/byof" target="_blank">BYOF</a>
+    </p>
+  </div>
+</body>
+</html>`
+}
+
+// ============================================================================
 // AI Generation
 // ============================================================================
 
@@ -1384,11 +1542,12 @@ app.listen(PORT, () => {
 ║   - DELETE /users/:id    - Delete user                         ║
 ║                                                                ║
 ║   BYOF SDK Endpoints:                                          ║
-║   - POST /api/chat       - Generate HTML from messages         ║
-║   - POST /api/save       - Save a generated UI                 ║
-║   - POST /api/save/load  - Load a saved UI                     ║
-║   - POST /api/save/list  - List saved UIs                      ║
-║   - GET  /health         - Health check                        ║
+║   - POST /api/chat         - Generate HTML from messages       ║
+║   - GET  /api/default-html - Get default HTML template         ║
+║   - POST /api/save         - Save a generated UI               ║
+║   - POST /api/save/load    - Load a saved UI                   ║
+║   - POST /api/save/list    - List saved UIs                    ║
+║   - GET  /health           - Health check                      ║
 ║                                                                ║
 ║   Environment Variables:                                       ║
 ║   - AI_API_URL    : Your AI endpoint URL                       ║

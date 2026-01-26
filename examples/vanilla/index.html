@@ -442,6 +442,16 @@
                 placeholder="https://api.example.com/openapi.json"
               />
             </div>
+
+            <div class="setup-field">
+              <label for="default-html-url">Default HTML URL (optional)</label>
+              <input
+                type="url"
+                id="default-html-url"
+                value="http://localhost:3001/api/default-html"
+                placeholder="https://api.example.com/default-html"
+              />
+            </div>
           </div>
 
           <!-- Options Section -->
@@ -535,7 +545,7 @@
     </div>
 
     <!-- Load BYOF SDK - browser bundle with all dependencies included -->
-    <script src="../../dist/index.browser.js"></script>
+    <script src="/dist/index.browser.js"></script>
     <script>
       // The browser bundle exposes BYOF as a global
       const { createByof, VERSION } = BYOF
@@ -736,6 +746,7 @@
       const chatEndpointInput = document.getElementById('chat-endpoint')
       const saveEndpointInput = document.getElementById('save-endpoint')
       const apiSpecUrlInput = document.getElementById('api-spec-url')
+      const defaultHtmlUrlInput = document.getElementById('default-html-url')
       const themeSelect = document.getElementById('theme-select')
       const authToggle = document.getElementById('auth-toggle')
       const initBtn = document.getElementById('init-btn')
@@ -775,6 +786,7 @@
 
         const saveEndpoint = saveEndpointInput.value.trim() || undefined
         const apiSpecUrl = apiSpecUrlInput.value.trim() || undefined
+        const defaultHtmlUrl = defaultHtmlUrlInput.value.trim() || undefined
         const theme = themes[themeSelect.value] || {}
 
         // Use demo API spec if no URL provided
@@ -789,6 +801,7 @@
           saveEndpoint,
           apiSpecUrl,
           apiSpec,
+          defaultHtmlUrl,
           theme,
           projectId: 'example-project',
           userId: 'example-user',

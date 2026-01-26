@@ -60,7 +60,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "example:web": "npx serve examples/vanilla -l 3000",
+    "example:web": "npx serve . -l 3000",
     "example:api": "node examples/backend/server.js",
     "example": "concurrently -n web,api,build -c blue,green,yellow \"npm run example:web\" \"npm run example:api\" \"npm run dev\"",
     "clean": "rm -rf dist",

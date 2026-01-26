@@ -127,6 +127,13 @@ export function createByof(options: ByofInitOptions): ByofInstance {
     void refreshSavedItems(state)
   }
 
+  // Load default HTML if provided (URL takes precedence over string)
+  if (options.defaultHtmlUrl) {
+    void loadDefaultHtmlFromUrl(state, options.defaultHtmlUrl)
+  } else if (options.defaultHtml) {
+    void loadDefaultHtml(state, options.defaultHtml)
+  }
+
   // Return public API
   return {
     destroy: () => destroy(state),
@@ -502,6 +509,74 @@ async function loadApiSpec(
   }
 }
 
+/**
+ * Load default HTML string directly into sandbox
+ */
+async function loadDefaultHtml(
+  state: ByofInternalState,
+  html: string
+): Promise<void> {
+  state.logger.info('Loading default HTML', { htmlLength: html.length })
+
+  try {
+    // Load into sandbox first (with auth injection if configured)
+    // Only set state after successful load to avoid inconsistency
+    await loadHtmlIntoSandboxWithAuth(state, html)
+
+    // Set state only after successful sandbox load
+    state.uiState.currentHtml = html
+
+    // Update UI to show sandbox content
+    updateUI(state.elements, state.uiState)
+
+    state.logger.info('Default HTML loaded successfully')
+  } catch (error: unknown) {
+    // Don't set currentHtml if load failed - state remains consistent
+    handleError(state, error)
+  }
+}
+
+/**
+ * Fetch default HTML from URL and load into sandbox
+ */
+async function loadDefaultHtmlFromUrl(
+  state: ByofInternalState,
+  url: string
+): Promise<void> {
+  state.logger.info('Loading default HTML from URL', { url })
+
+  try {
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new ByofException(
+        ByofErrorCode.NETWORK_ERROR,
+        `Failed to fetch default HTML: ${response.status} ${response.statusText}`
+      )
+    }
+
+    // Parse response - expect { html: string, title?: string }
+    const data = (await response.json()) as { html: string; title?: string }
+
+    if (!data.html) {
+      throw new ByofException(
+        ByofErrorCode.NETWORK_ERROR,
+        'Default HTML response missing html field'
+      )
+    }
+
+    state.logger.debug('Default HTML fetched', {
+      htmlLength: data.html.length,
+      title: data.title,
+    })
+
+    // Load into sandbox
+    await loadDefaultHtml(state, data.html)
+  } catch (error: unknown) {
+    handleError(state, error)
+  }
+}
+
 async function refreshSavedItems(state: ByofInternalState): Promise<void> {
   if (!state.saveEndpoint) {
     return
@@ -543,6 +618,7 @@ async function refreshSavedItems(state: ByofInternalState): Promise<void> {
 
 /**
  * Load HTML into sandbox with optional auth header injection
+ * @throws Re-throws errors after handling so callers can respond appropriately
  */
 async function loadHtmlIntoSandboxWithAuth(
   state: ByofInternalState,
@@ -572,7 +648,10 @@ async function loadHtmlIntoSandboxWithAuth(
       },
     })
   } catch (error: unknown) {
+    // Handle error (logs, shows in UI, calls callback)
     handleError(state, error)
+    // Re-throw so callers can respond (e.g., not update state)
+    throw error
   }
 }
 

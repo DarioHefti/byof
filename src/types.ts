@@ -100,6 +100,10 @@ export interface ByofInitOptions extends ByofCallbacks {
   apiSpec?: string
   /** URL to fetch JSON spec from */
   apiSpecUrl?: string
+  /** Default HTML to show in sandbox on initialization */
+  defaultHtml?: string
+  /** URL to fetch default HTML from (takes precedence over defaultHtml) */
+  defaultHtmlUrl?: string
   /** Project identifier for context */
   projectId?: string
   /** User identifier for context */
@@ -175,6 +179,12 @@ export interface ChatResponse {
   html: string
   title?: string
   warnings?: string[]
+}
+
+/** Response from the default HTML endpoint */
+export interface DefaultHtmlResponse {
+  html: string
+  title?: string
 }
 
 // ============================================================================
