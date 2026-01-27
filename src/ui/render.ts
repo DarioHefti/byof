@@ -16,6 +16,9 @@ const ICONS = {
   placeholder: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>`,
   menu: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>`,
   close: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  chevronDown: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`,
+  chevronUp: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>`,
+  message: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
 }
 
 export interface UIElements {
@@ -25,6 +28,8 @@ export interface UIElements {
   statusDot: HTMLElement
   statusText: HTMLElement
   menuButton: HTMLButtonElement
+  chatSection: HTMLElement
+  chatToggleButton: HTMLButtonElement
   messagesContainer: HTMLElement
   inputTextarea: HTMLTextAreaElement
   sendButton: HTMLButtonElement
@@ -75,7 +80,7 @@ export function renderUI(
     createHeader()
 
   // Create chat section
-  const { chatSection, messagesContainer, inputTextarea, sendButton } =
+  const { chatSection, chatToggleButton, messagesContainer, inputTextarea, sendButton } =
     createChatSection(callbacks)
 
   // Create controls (reset, save, load) - collapsible panel
@@ -117,6 +122,8 @@ export function renderUI(
     statusDot,
     statusText,
     menuButton,
+    chatSection,
+    chatToggleButton,
     messagesContainer,
     inputTextarea,
     sendButton,
@@ -244,16 +251,50 @@ function createHeader(): {
 }
 
 /**
- * Create the chat section
+ * Create the chat section with collapsible header
  */
 function createChatSection(callbacks: UICallbacks): {
   chatSection: HTMLElement
+  chatToggleButton: HTMLButtonElement
   messagesContainer: HTMLElement
   inputTextarea: HTMLTextAreaElement
   sendButton: HTMLButtonElement
 } {
   const chatSection = document.createElement('section')
   chatSection.className = 'byof-chat'
+
+  // Chat header with toggle button
+  const chatHeader = document.createElement('div')
+  chatHeader.className = 'byof-chat-header'
+
+  const chatHeaderLeft = document.createElement('div')
+  chatHeaderLeft.className = 'byof-chat-header-left'
+
+  const chatIcon = document.createElement('span')
+  chatIcon.className = 'byof-chat-icon'
+  chatIcon.innerHTML = ICONS.message
+
+  const chatTitle = document.createElement('span')
+  chatTitle.className = 'byof-chat-title'
+  chatTitle.textContent = 'Chat'
+
+  chatHeaderLeft.appendChild(chatIcon)
+  chatHeaderLeft.appendChild(chatTitle)
+
+  const chatToggleButton = document.createElement('button')
+  chatToggleButton.className = 'byof-btn byof-btn-icon byof-chat-toggle'
+  chatToggleButton.innerHTML = ICONS.chevronUp
+  chatToggleButton.type = 'button'
+  chatToggleButton.title = 'Collapse chat'
+  chatToggleButton.setAttribute('aria-label', 'Toggle chat panel')
+  chatToggleButton.setAttribute('aria-expanded', 'true')
+
+  chatHeader.appendChild(chatHeaderLeft)
+  chatHeader.appendChild(chatToggleButton)
+
+  // Chat content (messages + input) - collapsible part
+  const chatContent = document.createElement('div')
+  chatContent.className = 'byof-chat-content'
 
   const messagesContainer = document.createElement('div')
   messagesContainer.className = 'byof-messages'
@@ -306,13 +347,35 @@ function createChatSection(callbacks: UICallbacks): {
     inputTextarea.style.height = `${Math.min(inputTextarea.scrollHeight, 120)}px`
   })
 
+  // Toggle chat collapse/expand
+  let isChatCollapsed = false
+  chatToggleButton.addEventListener('click', () => {
+    isChatCollapsed = !isChatCollapsed
+    chatSection.classList.toggle('collapsed', isChatCollapsed)
+    chatToggleButton.innerHTML = isChatCollapsed
+      ? ICONS.chevronDown
+      : ICONS.chevronUp
+    chatToggleButton.title = isChatCollapsed ? 'Expand chat' : 'Collapse chat'
+    chatToggleButton.setAttribute('aria-expanded', String(!isChatCollapsed))
+  })
+
+  // Also allow clicking the header (not just button) to toggle
+  chatHeader.addEventListener('click', (e) => {
+    if (e.target !== chatToggleButton && !chatToggleButton.contains(e.target as Node)) {
+      chatToggleButton.click()
+    }
+  })
+
   inputArea.appendChild(inputTextarea)
   inputArea.appendChild(sendButton)
 
-  chatSection.appendChild(messagesContainer)
-  chatSection.appendChild(inputArea)
+  chatContent.appendChild(messagesContainer)
+  chatContent.appendChild(inputArea)
 
-  return { chatSection, messagesContainer, inputTextarea, sendButton }
+  chatSection.appendChild(chatHeader)
+  chatSection.appendChild(chatContent)
+
+  return { chatSection, chatToggleButton, messagesContainer, inputTextarea, sendButton }
 }
 
 /**

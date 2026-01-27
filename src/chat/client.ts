@@ -17,6 +17,8 @@ export interface SendChatOptions {
   systemPrompt: string
   /** API spec as JSON string (optional, for backend reference) */
   apiSpec?: string
+  /** Current HTML state for iterative refinement (not stored in message history) */
+  currentHtml?: string
   context?: {
     projectId?: string
     userId?: string
@@ -42,6 +44,7 @@ export async function sendChat(
     messages,
     systemPrompt,
     apiSpec,
+    currentHtml,
     context,
     timeout = TIMEOUTS.CHAT_REQUEST_MS,
     signal,
@@ -52,6 +55,7 @@ export async function sendChat(
     endpoint,
     messageCount: messages.length,
     systemPromptLength: systemPrompt.length,
+    hasCurrentHtml: !!currentHtml,
   })
 
   const request: ChatRequest = {
@@ -62,6 +66,9 @@ export async function sendChat(
   // Only add optional fields if provided (exactOptionalPropertyTypes compliance)
   if (apiSpec !== undefined) {
     request.apiSpec = apiSpec
+  }
+  if (currentHtml !== undefined) {
+    request.currentHtml = currentHtml
   }
   if (context) {
     request.context = context
@@ -84,6 +91,7 @@ export async function sendChat(
   logger.info('Chat response received', {
     htmlLength: parsed.html.length,
     title: parsed.title,
+    hasMessage: !!parsed.message,
     warningCount: warnings.length,
   })
 
@@ -93,6 +101,9 @@ export async function sendChat(
   }
   if (parsed.title !== undefined) {
     chatResponse.title = parsed.title
+  }
+  if (parsed.message !== undefined) {
+    chatResponse.message = parsed.message
   }
   if (warnings.length > 0) {
     chatResponse.warnings = warnings

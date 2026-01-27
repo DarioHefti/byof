@@ -449,6 +449,11 @@ async function sendChatRequest(state: ByofInternalState): Promise<void> {
       chatOptions.apiSpec = state.apiSpec
     }
 
+    // Include current HTML for iterative refinement (not stored in message history)
+    if (state.uiState.currentHtml) {
+      chatOptions.currentHtml = state.uiState.currentHtml
+    }
+
     const ctx = buildContext(state)
     if (ctx !== undefined) {
       chatOptions.context = ctx
@@ -456,13 +461,15 @@ async function sendChatRequest(state: ByofInternalState): Promise<void> {
 
     const response = await sendChat(chatOptions)
 
-    // Add assistant message
-    const assistantMessage: ByofMessage = {
-      role: 'assistant',
-      content: response.title ?? 'Generated UI',
-      ts: state.timeProvider.now(),
+    // Add assistant message only if there's a message from the AI
+    if (response.message) {
+      const assistantMessage: ByofMessage = {
+        role: 'assistant',
+        content: response.message,
+        ts: state.timeProvider.now(),
+      }
+      state.uiState.messages.push(assistantMessage)
     }
-    state.uiState.messages.push(assistantMessage)
 
     // Update HTML state
     state.uiState.currentHtml = response.html

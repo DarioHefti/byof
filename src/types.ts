@@ -168,6 +168,8 @@ export interface ChatRequest {
   systemPrompt: string
   /** API spec as JSON string (for reference, also embedded in systemPrompt) */
   apiSpec?: string
+  /** Current HTML state for iterative refinement (not stored in message history) */
+  currentHtml?: string
   context?: {
     projectId?: string
     userId?: string
@@ -178,6 +180,8 @@ export interface ChatRequest {
 export interface ChatResponse {
   html: string
   title?: string
+  /** Optional message from the AI explaining what was built, suggestions, or clarifications */
+  message?: string
   warnings?: string[]
 }
 

@@ -326,6 +326,7 @@ app.delete('/users/:id', (req, res) => {
  *   messages: Array<{ role: string; content: string }>
  *   systemPrompt: string  // Built by the BYOF library
  *   apiSpec?: string      // For reference
+ *   currentHtml?: string  // Current HTML state for iterative refinement
  *   context?: { projectId?: string; userId?: string }
  * }
  *
@@ -333,16 +334,19 @@ app.delete('/users/:id', (req, res) => {
  * {
  *   html: string
  *   title?: string
+ *   message?: string   // AI's explanation, suggestions, or clarifications
  *   warnings?: string[]
  * }
  */
 app.post('/api/chat', async (req, res) => {
-  const { messages, systemPrompt, apiSpec, context } = req.body
+  const { messages, systemPrompt, apiSpec, currentHtml, context } = req.body
 
   console.log('[Chat] Received request:', {
     messageCount: messages?.length,
     systemPromptLength: systemPrompt?.length,
     hasApiSpec: !!apiSpec,
+    hasCurrentHtml: !!currentHtml,
+    currentHtmlLength: currentHtml?.length,
     context,
   })
 
@@ -363,15 +367,16 @@ app.post('/api/chat', async (req, res) => {
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
   const userRequest = lastUserMessage?.content || 'a simple UI'
 
-  let html, title
+  let html, title, message
   const warnings = []
 
   // Use AI if configured, otherwise use mock
   if (AI_API_URL && AI_API_KEY) {
     try {
-      const result = await generateWithAI(messages, systemPrompt)
+      const result = await generateWithAI(messages, systemPrompt, currentHtml)
       html = result.html
       title = result.title
+      message = result.message
       console.log(`[Chat] Generated with ${AI_PROVIDER}`)
     } catch (error) {
       console.error('[Chat] AI error:', error)
@@ -386,6 +391,7 @@ app.post('/api/chat', async (req, res) => {
     const result = generateMockHtml(userRequest, apiSpec, context)
     html = result.html
     title = result.title
+    message = result.message
     warnings.push(
       'Using mock generation. Set AI_API_URL and AI_API_KEY for real AI.'
     )
@@ -396,13 +402,14 @@ app.post('/api/chat', async (req, res) => {
     warnings.push('No API specification provided. Generated UI is generic.')
   }
 
-  console.log('[Chat] Generated response:', { title, htmlLength: html.length })
+  console.log('[Chat] Generated response:', { title, htmlLength: html.length, hasMessage: !!message })
 
-  res.json({
-    html,
-    title,
-    warnings: warnings.length > 0 ? warnings : undefined,
-  })
+  const response = { html }
+  if (title) response.title = title
+  if (message) response.message = message
+  if (warnings.length > 0) response.warnings = warnings
+
+  res.json(response)
 })
 
 // ============================================================================
@@ -779,18 +786,26 @@ function generateDefaultHtml() {
  * Generate HTML using the configured AI provider
  *
  * The system prompt is now provided by the BYOF library, not built here.
+ * @param {Array} messages - Conversation messages
+ * @param {string} systemPrompt - System prompt from BYOF library
+ * @param {string|undefined} currentHtml - Current HTML state for iterative refinement
  */
-async function generateWithAI(messages, systemPrompt) {
+async function generateWithAI(messages, systemPrompt, currentHtml) {
+  // Build the effective system prompt with current HTML context if provided
+  const effectiveSystemPrompt = currentHtml
+    ? `${systemPrompt}\n\nCURRENT HTML STATE:\nThe user has an existing UI that they want to modify. Here is the current HTML:\n\n\`\`\`html\n${currentHtml}\n\`\`\`\n\nModify this HTML based on the user's request. Preserve existing functionality unless asked to change it.`
+    : systemPrompt
+
   if (AI_PROVIDER === 'anthropic') {
-    return await callAnthropic(systemPrompt, messages)
+    return await callAnthropic(effectiveSystemPrompt, messages)
   } else if (
     AI_PROVIDER === 'azure-responses' ||
     AI_PROVIDER === 'openai-responses'
   ) {
-    return await callResponsesAPI(systemPrompt, messages)
+    return await callResponsesAPI(effectiveSystemPrompt, messages)
   } else {
     // OpenAI Chat Completions, Azure Chat Completions, or OpenAI-compatible
-    return await callOpenAI(systemPrompt, messages)
+    return await callOpenAI(effectiveSystemPrompt, messages)
   }
 }
 
@@ -844,11 +859,8 @@ async function callOpenAI(systemPrompt, messages) {
     throw new Error('No content in AI response')
   }
 
-  // Extract HTML and title
-  const html = extractHtml(content)
-  const title = extractTitle(html)
-
-  return { html, title }
+  // Parse response (handles both JSON and raw HTML)
+  return parseAIResponse(content)
 }
 
 /**
@@ -936,11 +948,8 @@ async function callResponsesAPI(systemPrompt, messages) {
     throw new Error('No content in AI response')
   }
 
-  // Extract HTML and title
-  const html = extractHtml(content)
-  const title = extractTitle(html)
-
-  return { html, title }
+  // Parse response (handles both JSON and raw HTML)
+  return parseAIResponse(content)
 }
 
 /**
@@ -981,18 +990,53 @@ async function callAnthropic(systemPrompt, messages) {
     throw new Error('No content in AI response')
   }
 
-  // Extract HTML and title
-  const html = extractHtml(content)
-  const title = extractTitle(html)
-
-  return { html, title }
+  // Parse response (handles both JSON and raw HTML)
+  return parseAIResponse(content)
 }
 
 /**
- * Extract HTML from AI response (handles code blocks if present)
+ * Parse AI response - handles both JSON format and raw HTML
  */
-function extractHtml(content) {
-  // Remove markdown code blocks if present
+function parseAIResponse(content) {
+  const trimmed = content.trim()
+
+  // Try to parse as JSON first (new format with message field)
+  try {
+    // Handle JSON wrapped in code blocks
+    let jsonStr = trimmed
+    const jsonBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonBlockMatch) {
+      jsonStr = jsonBlockMatch[1].trim()
+    }
+
+    // Try parsing as JSON
+    if (jsonStr.startsWith('{')) {
+      const parsed = JSON.parse(jsonStr)
+      if (parsed.html) {
+        return {
+          html: parsed.html,
+          title: parsed.title || extractTitle(parsed.html),
+          message: parsed.message,
+        }
+      }
+    }
+  } catch (e) {
+    // Not valid JSON, fall through to HTML extraction
+  }
+
+  // Fall back to raw HTML extraction (legacy format)
+  const html = extractHtmlFromContent(trimmed)
+  return {
+    html,
+    title: extractTitle(html),
+    message: undefined,
+  }
+}
+
+/**
+ * Extract HTML from raw content (handles code blocks if present)
+ */
+function extractHtmlFromContent(content) {
   let html = content.trim()
 
   // Handle ```html ... ``` blocks
@@ -1052,13 +1096,16 @@ function generateMockHtml(userRequest, apiSpec, context) {
   // Determine what kind of UI to generate based on keywords
   let title = 'Generated UI'
   let content = ''
+  let message = ''
 
   if (request.includes('dashboard') || request.includes('stats')) {
     title = 'Dashboard'
     content = generateDashboard(context)
+    message = 'I created a dashboard with key metrics, a weekly activity chart, and recent activity feed. You might want to add: real-time updates, date filtering, or export functionality.'
   } else if (request.includes('form') || request.includes('input')) {
     title = 'Form'
     content = generateForm(context)
+    message = 'Here\'s a contact form with validation. I assumed you wanted basic fields (name, email, subject, message). Consider adding: file upload, phone number, or CAPTCHA for spam protection.'
   } else if (
     request.includes('table') ||
     request.includes('list') ||
@@ -1066,20 +1113,24 @@ function generateMockHtml(userRequest, apiSpec, context) {
   ) {
     title = 'Data Table'
     content = generateTable(context)
+    message = 'I built a user directory table with role badges and status indicators. Suggestions: add sorting, filtering, pagination, or bulk actions for managing multiple users.'
   } else if (request.includes('card') || request.includes('profile')) {
     title = 'Profile Card'
     content = generateCard(context)
+    message = 'Created a profile card with avatar, stats, and bio section. You might want to add: edit functionality, social links, or activity history.'
   } else if (request.includes('chart') || request.includes('graph')) {
     title = 'Chart View'
     content = generateChart(context)
+    message = 'Here\'s an analytics view with a bar chart and stats. Note: I used CSS-based charts for simplicity. For more complex visualizations, consider integrating a charting library.'
   } else {
     // Default: generate based on first few words
     title = userRequest.split(' ').slice(0, 3).join(' ')
     content = generateGeneric(userRequest, context)
+    message = 'This is a placeholder UI. Try being more specific with your request - for example: "create a dashboard", "build a contact form", or "make a user table".'
   }
 
   const html = wrapInHtml(title, content)
-  return { html, title }
+  return { html, title, message }
 }
 
 /**

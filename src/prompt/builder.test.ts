@@ -38,9 +38,9 @@ describe('buildDefaultPrompt', () => {
   it('should include basic output rules', () => {
     const prompt = buildDefaultPrompt({})
 
-    expect(prompt).toContain('Generate a single, self-contained HTML file')
+    expect(prompt).toContain('You are a UI generator')
     expect(prompt).toContain('<!DOCTYPE html>')
-    expect(prompt).toContain('Do NOT wrap in markdown')
+    expect(prompt).toContain('RESPONSE FORMAT')
     expect(prompt).toContain('No external dependencies')
   })
 
@@ -75,7 +75,7 @@ describe('buildSystemPrompt', () => {
   it('should use default prompt when no config provided', () => {
     const prompt = buildSystemPrompt({})
 
-    expect(prompt).toContain('Generate a single, self-contained HTML file')
+    expect(prompt).toContain('You are a UI generator')
   })
 
   it('should use custom systemPrompt when provided', () => {
@@ -90,7 +90,7 @@ describe('buildSystemPrompt', () => {
     const suffix = 'Always use blue colors.'
     const prompt = buildSystemPrompt({}, { systemPromptSuffix: suffix })
 
-    expect(prompt).toContain('Generate a single, self-contained HTML file')
+    expect(prompt).toContain('You are a UI generator')
     expect(prompt).toContain(suffix)
   })
 

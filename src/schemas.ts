@@ -16,6 +16,8 @@ export type MessageRole = z.infer<typeof messageRoleSchema>
 export const chatResponseSchema = z.object({
   html: z.string().min(1),
   title: z.string().optional(),
+  // Optional message from AI with explanations, suggestions, or clarifications
+  message: z.string().optional(),
   // Normalize null/undefined warnings to empty array for backend flexibility
   // (.nullable() for null, .optional() for undefined, client normalizes to [])
   warnings: z.array(z.string()).nullable().optional(),

@@ -61,7 +61,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "example:web": "npx serve . -l 3000",
-    "example:api": "node examples/backend/server.js",
+    "example:api": "node --env-file=examples/backend/.env examples/backend/server.js",
     "example": "concurrently -n web,api,build -c blue,green,yellow \"npm run example:web\" \"npm run example:api\" \"npm run dev\"",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run test:run && npm run build",

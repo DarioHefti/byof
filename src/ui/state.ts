@@ -147,8 +147,11 @@ function renderMessages(
 
 /**
  * Set loading state on interactive elements
+ * Note: View controls (fullscreen, new tab, menu, chat toggle) remain enabled
+ * so users can still interact with the UI while waiting for AI response
  */
 function setLoadingState(elements: UIElements, isLoading: boolean): void {
+  // Disable input/action elements during loading
   elements.inputTextarea.disabled = isLoading
   elements.sendButton.disabled = isLoading
   elements.resetButton.disabled = isLoading
@@ -156,8 +159,8 @@ function setLoadingState(elements: UIElements, isLoading: boolean): void {
   elements.saveNameInput.disabled = isLoading
   elements.loadSelect.disabled = isLoading
   elements.loadButton.disabled = isLoading
-  elements.fullscreenButton.disabled = isLoading
-  elements.newTabButton.disabled = isLoading
+  // Note: fullscreenButton, newTabButton, menuButton, and chatToggleButton
+  // intentionally NOT disabled - users should be able to use view controls while loading
 }
 
 /**

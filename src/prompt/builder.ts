@@ -55,16 +55,55 @@ export function getApiBaseUrl(allowedOrigins: string[]): string | undefined {
  * 3. API integration (base URL + spec)
  * 4. Auth headers (if available)
  * 5. Sandbox constraints (no localStorage)
+ * 6. Response message with suggestions/clarifications
  */
 export function buildDefaultPrompt(options: PromptOptions): string {
   const { apiSpec, apiBaseUrl, hasAuth } = options
 
   const parts: string[] = [
-    'Generate a single, self-contained HTML file.',
+    'You are a UI generator that creates single-page HTML applications.',
     '',
-    'Output rules:',
+    'RESPONSE FORMAT:',
+    'Return a JSON object with these fields:',
+    '- html (required): The complete HTML file starting with <!DOCTYPE html>',
+    '- title (optional): A short title for what you built (e.g., "Login Form")',
+    '- message (optional but encouraged): A helpful message to the user',
+    '',
+    'WHEN TO INCLUDE A MESSAGE:',
+    'Always include a message when:',
+    '1. The request was vague or ambiguous - explain what you assumed',
+    '2. You made design decisions - explain your choices briefly',
+    '3. There are useful next steps - suggest improvements or features to add',
+    '4. Something is missing - ask for clarification if needed',
+    '5. There are limitations - note any constraints or workarounds',
+    '',
+    'Keep messages concise (1-3 sentences). Focus on what helps the user iterate.',
+    '',
+    'Example responses:',
+    '',
+    '// Clear request - brief message',
+    '{',
+    '  "html": "<!DOCTYPE html>...",',
+    '  "title": "Login Form",',
+    '  "message": "Added email validation and password visibility toggle. Consider adding: forgot password link, OAuth buttons, or rate limiting."',
+    '}',
+    '',
+    '// Ambiguous request - explain assumptions',
+    '{',
+    '  "html": "<!DOCTYPE html>...",',
+    '  "title": "User Dashboard",',
+    '  "message": "I assumed you wanted an overview with stats and recent activity. Let me know if you need: specific metrics, charts, user management, or a different layout."',
+    '}',
+    '',
+    '// Missing info - ask for clarification',
+    '{',
+    '  "html": "<!DOCTYPE html>...",',
+    '  "title": "Data Table",',
+    '  "message": "Built a basic table with the /users endpoint. What actions do you need? Edit/delete buttons, bulk selection, export to CSV?"',
+    '}',
+    '',
+    'HTML rules:',
     '- Return ONLY valid HTML starting with <!DOCTYPE html>',
-    '- Do NOT wrap in markdown code blocks',
     '- Inline all CSS in <style> and JS in <script> tags',
     '- No external dependencies (no CDN links)',
   ]
