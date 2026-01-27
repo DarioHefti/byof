@@ -23,7 +23,6 @@ const ICONS = {
 
 export interface UIElements {
   container: HTMLElement
-  header: HTMLElement
   statusIndicator: HTMLElement
   statusDot: HTMLElement
   statusText: HTMLElement
@@ -75,13 +74,18 @@ export function renderUI(
   const container = document.createElement('div')
   container.className = 'byof-container'
 
-  // Create header with title, status, and menu button
-  const { header, statusIndicator, statusDot, statusText, menuButton } =
-    createHeader()
-
-  // Create chat section
-  const { chatSection, chatToggleButton, messagesContainer, inputTextarea, sendButton } =
-    createChatSection(callbacks)
+  // Create chat section with integrated status and menu
+  const {
+    chatSection,
+    chatToggleButton,
+    messagesContainer,
+    inputTextarea,
+    sendButton,
+    statusIndicator,
+    statusDot,
+    statusText,
+    menuButton,
+  } = createChatSection(callbacks)
 
   // Create controls (reset, save, load) - collapsible panel
   const {
@@ -106,9 +110,8 @@ export function renderUI(
   // Create error display
   const errorDisplay = createErrorDisplay()
 
-  // Assemble - controls panel goes inside header for proper absolute positioning
-  header.appendChild(controlsPanel)
-  container.appendChild(header)
+  // Assemble - controls panel goes inside chat section for proper absolute positioning
+  chatSection.appendChild(controlsPanel)
   container.appendChild(chatSection)
   container.appendChild(sandboxSection)
   container.appendChild(errorDisplay)
@@ -117,7 +120,6 @@ export function renderUI(
 
   return {
     container,
-    header,
     statusIndicator,
     statusDot,
     statusText,
@@ -198,27 +200,46 @@ function injectStyles(theme?: ByofTheme): void {
 }
 
 /**
- * Create the header section with menu button
+ * Create the chat section with collapsible header, integrated status indicator and menu
  */
-function createHeader(): {
-  header: HTMLElement
+function createChatSection(callbacks: UICallbacks): {
+  chatSection: HTMLElement
+  chatToggleButton: HTMLButtonElement
+  messagesContainer: HTMLElement
+  inputTextarea: HTMLTextAreaElement
+  sendButton: HTMLButtonElement
   statusIndicator: HTMLElement
   statusDot: HTMLElement
   statusText: HTMLElement
   menuButton: HTMLButtonElement
 } {
-  const header = document.createElement('header')
-  header.className = 'byof-header'
+  const chatSection = document.createElement('section')
+  chatSection.className = 'byof-chat'
 
-  // Left side: title
-  const title = document.createElement('h1')
-  title.className = 'byof-header-title'
-  title.textContent = 'BYOF'
+  // Chat header (now serves as the main taskbar)
+  const chatHeader = document.createElement('div')
+  chatHeader.className = 'byof-chat-header'
 
-  // Right side: status + menu button
-  const headerRight = document.createElement('div')
-  headerRight.className = 'byof-header-right'
+  // Left side: chat icon and title
+  const chatHeaderLeft = document.createElement('div')
+  chatHeaderLeft.className = 'byof-chat-header-left'
 
+  const chatIcon = document.createElement('span')
+  chatIcon.className = 'byof-chat-icon'
+  chatIcon.innerHTML = ICONS.message
+
+  const chatTitle = document.createElement('span')
+  chatTitle.className = 'byof-chat-title'
+  chatTitle.textContent = 'Chat'
+
+  chatHeaderLeft.appendChild(chatIcon)
+  chatHeaderLeft.appendChild(chatTitle)
+
+  // Right side: status indicator, menu button, toggle button
+  const chatHeaderRight = document.createElement('div')
+  chatHeaderRight.className = 'byof-chat-header-right'
+
+  // Status indicator
   const statusIndicator = document.createElement('div')
   statusIndicator.className = 'byof-status-indicator'
 
@@ -241,46 +262,7 @@ function createHeader(): {
   menuButton.setAttribute('aria-label', 'Toggle controls menu')
   menuButton.setAttribute('aria-expanded', 'false')
 
-  headerRight.appendChild(statusIndicator)
-  headerRight.appendChild(menuButton)
-
-  header.appendChild(title)
-  header.appendChild(headerRight)
-
-  return { header, statusIndicator, statusDot, statusText, menuButton }
-}
-
-/**
- * Create the chat section with collapsible header
- */
-function createChatSection(callbacks: UICallbacks): {
-  chatSection: HTMLElement
-  chatToggleButton: HTMLButtonElement
-  messagesContainer: HTMLElement
-  inputTextarea: HTMLTextAreaElement
-  sendButton: HTMLButtonElement
-} {
-  const chatSection = document.createElement('section')
-  chatSection.className = 'byof-chat'
-
-  // Chat header with toggle button
-  const chatHeader = document.createElement('div')
-  chatHeader.className = 'byof-chat-header'
-
-  const chatHeaderLeft = document.createElement('div')
-  chatHeaderLeft.className = 'byof-chat-header-left'
-
-  const chatIcon = document.createElement('span')
-  chatIcon.className = 'byof-chat-icon'
-  chatIcon.innerHTML = ICONS.message
-
-  const chatTitle = document.createElement('span')
-  chatTitle.className = 'byof-chat-title'
-  chatTitle.textContent = 'Chat'
-
-  chatHeaderLeft.appendChild(chatIcon)
-  chatHeaderLeft.appendChild(chatTitle)
-
+  // Toggle button for chat collapse/expand
   const chatToggleButton = document.createElement('button')
   chatToggleButton.className = 'byof-btn byof-btn-icon byof-chat-toggle'
   chatToggleButton.innerHTML = ICONS.chevronUp
@@ -289,8 +271,12 @@ function createChatSection(callbacks: UICallbacks): {
   chatToggleButton.setAttribute('aria-label', 'Toggle chat panel')
   chatToggleButton.setAttribute('aria-expanded', 'true')
 
+  chatHeaderRight.appendChild(statusIndicator)
+  chatHeaderRight.appendChild(menuButton)
+  chatHeaderRight.appendChild(chatToggleButton)
+
   chatHeader.appendChild(chatHeaderLeft)
-  chatHeader.appendChild(chatToggleButton)
+  chatHeader.appendChild(chatHeaderRight)
 
   // Chat content (messages + input) - collapsible part
   const chatContent = document.createElement('div')
@@ -349,7 +335,8 @@ function createChatSection(callbacks: UICallbacks): {
 
   // Toggle chat collapse/expand
   let isChatCollapsed = false
-  chatToggleButton.addEventListener('click', () => {
+  chatToggleButton.addEventListener('click', (e) => {
+    e.stopPropagation() // Prevent header click from triggering
     isChatCollapsed = !isChatCollapsed
     chatSection.classList.toggle('collapsed', isChatCollapsed)
     chatToggleButton.innerHTML = isChatCollapsed
@@ -359,11 +346,14 @@ function createChatSection(callbacks: UICallbacks): {
     chatToggleButton.setAttribute('aria-expanded', String(!isChatCollapsed))
   })
 
-  // Also allow clicking the header (not just button) to toggle
-  chatHeader.addEventListener('click', (e) => {
-    if (e.target !== chatToggleButton && !chatToggleButton.contains(e.target as Node)) {
-      chatToggleButton.click()
-    }
+  // Prevent menu button clicks from triggering chat toggle
+  menuButton.addEventListener('click', (e) => {
+    e.stopPropagation()
+  })
+
+  // Also allow clicking the header left side to toggle (not the right side with controls)
+  chatHeaderLeft.addEventListener('click', () => {
+    chatToggleButton.click()
   })
 
   inputArea.appendChild(inputTextarea)
@@ -375,7 +365,17 @@ function createChatSection(callbacks: UICallbacks): {
   chatSection.appendChild(chatHeader)
   chatSection.appendChild(chatContent)
 
-  return { chatSection, chatToggleButton, messagesContainer, inputTextarea, sendButton }
+  return {
+    chatSection,
+    chatToggleButton,
+    messagesContainer,
+    inputTextarea,
+    sendButton,
+    statusIndicator,
+    statusDot,
+    statusText,
+    menuButton,
+  }
 }
 
 /**

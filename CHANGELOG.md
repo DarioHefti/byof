@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: Removed dedicated header section - status indicator and menu button are now integrated into the chat header/taskbar
+- **BREAKING**: Removed `header` property from `UIElements` interface
+- Container now uses `flex: 1` instead of `height: 100%` for better flex-based layout support
+- Controls panel now drops down from chat header instead of old header
+- Simplified fullscreen mode styles
+
 ## [0.1.0] - 2026-01-17
 
 ### Added

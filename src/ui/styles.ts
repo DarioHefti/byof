@@ -50,7 +50,8 @@ export const styles = `
 
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     font-family: var(--byof-font-family);
     font-size: var(--byof-font-size);
     line-height: var(--byof-line-height);
@@ -68,32 +69,8 @@ export const styles = `
   }
 
   /* ========================================
-     Header - Minimal & Clean
+     Status Indicator - Shared styles
      ======================================== */
-  .byof-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--byof-padding-sm) var(--byof-padding);
-    background: var(--byof-bg);
-    border-bottom: 1px solid var(--byof-border-light);
-    flex-shrink: 0;
-  }
-
-  .byof-header-title {
-    font-size: 15px;
-    font-weight: 600;
-    margin: 0;
-    color: var(--byof-text);
-    letter-spacing: -0.01em;
-  }
-
-  .byof-header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
   .byof-status-indicator {
     display: flex;
     align-items: center;
@@ -101,16 +78,6 @@ export const styles = `
     font-size: var(--byof-font-size-xs);
     color: var(--byof-text-muted);
     transition: color var(--byof-transition);
-  }
-
-  .byof-menu-btn {
-    border: none;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .byof-menu-btn:hover:not(:disabled) {
-    background: var(--byof-bg-tertiary);
   }
 
   .byof-status-dot {
@@ -137,8 +104,18 @@ export const styles = `
     }
   }
 
+  .byof-menu-btn {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .byof-menu-btn:hover:not(:disabled) {
+    background: var(--byof-bg-tertiary);
+  }
+
   /* ========================================
-     Chat Area - Conversational & Clean
+     Chat Area - Main Taskbar & Content
      ======================================== */
   .byof-chat {
     display: flex;
@@ -146,26 +123,34 @@ export const styles = `
     flex: 0 0 auto;
     background: var(--byof-bg);
     border-bottom: 1px solid var(--byof-border-light);
+    position: relative;
   }
 
-  /* Chat Header - Clickable to toggle */
+  /* Chat Header - Now serves as the main taskbar */
   .byof-chat-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 8px var(--byof-padding);
     background: var(--byof-bg-secondary);
-    cursor: pointer;
     user-select: none;
     border-bottom: 1px solid var(--byof-border-light);
     transition: background var(--byof-transition-fast);
-  }
-
-  .byof-chat-header:hover {
-    background: var(--byof-bg-tertiary);
+    position: relative;
   }
 
   .byof-chat-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .byof-chat-header-left:hover {
+    opacity: 0.8;
+  }
+
+  .byof-chat-header-right {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -338,14 +323,13 @@ export const styles = `
   .byof-controls-panel {
     position: absolute;
     top: 100%;
-    right: 0;
+    right: var(--byof-padding);
     width: 280px;
     max-height: 0;
     overflow: hidden;
     background: var(--byof-bg);
     border: 1px solid var(--byof-border);
-    border-top: none;
-    border-radius: 0 0 var(--byof-border-radius) var(--byof-border-radius);
+    border-radius: var(--byof-border-radius);
     box-shadow: var(--byof-shadow-lg);
     z-index: 100;
     opacity: 0;
@@ -354,6 +338,7 @@ export const styles = `
     transition: max-height var(--byof-transition-slow), 
                 opacity var(--byof-transition), 
                 transform var(--byof-transition);
+    margin-top: 4px;
   }
 
   .byof-controls-panel.open {
@@ -394,11 +379,6 @@ export const styles = `
   .byof-btn-full {
     width: 100%;
     justify-content: center;
-  }
-
-  /* Make header relative for dropdown positioning */
-  .byof-header {
-    position: relative;
   }
 
   .byof-input {
@@ -697,29 +677,6 @@ export const styles = `
 
   .byof-fullscreen .byof-chat {
     display: none;
-  }
-
-  .byof-fullscreen .byof-header {
-    position: fixed;
-    bottom: 16px;
-    left: 16px;
-    top: auto;
-    right: auto;
-    width: auto;
-    background: var(--byof-bg);
-    padding: 8px 12px;
-    border-radius: var(--byof-border-radius);
-    box-shadow: var(--byof-shadow-lg);
-    border: none;
-    z-index: 10002;
-  }
-
-  .byof-fullscreen .byof-header-title {
-    display: none;
-  }
-
-  .byof-fullscreen .byof-controls-panel {
-    z-index: 10003;
   }
 
   .byof-fullscreen .byof-sandbox {

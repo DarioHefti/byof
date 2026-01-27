@@ -88,10 +88,12 @@ describe('createByof', () => {
     const container = mountElement.querySelector('.byof-container')
     expect(container).not.toBeNull()
 
-    // Check for key UI elements
-    expect(mountElement.querySelector('.byof-header')).not.toBeNull()
+    // Check for key UI elements (status and menu are now in chat header)
     expect(mountElement.querySelector('.byof-chat')).not.toBeNull()
+    expect(mountElement.querySelector('.byof-chat-header')).not.toBeNull()
     expect(mountElement.querySelector('.byof-sandbox')).not.toBeNull()
+    expect(mountElement.querySelector('.byof-status-indicator')).not.toBeNull()
+    expect(mountElement.querySelector('.byof-menu-btn')).not.toBeNull()
 
     instance.destroy()
   })
