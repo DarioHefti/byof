@@ -89,6 +89,7 @@ export type { PromptOptions, PromptConfig } from './prompt'
 // Zod schemas (for backend response validation)
 export {
   chatResponseSchema,
+  defaultHtmlResponseSchema,
   saveResponseSchema,
   loadResponseSchema,
   listResponseSchema,
@@ -97,6 +98,7 @@ export {
 
 export type {
   ChatResponseParsed,
+  DefaultHtmlResponseParsed,
   SaveResponseParsed,
   LoadResponseParsed,
   ListResponseParsed,

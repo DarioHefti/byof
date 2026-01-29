@@ -9,6 +9,7 @@ import { sendChat } from '../chat'
 import { buildSystemPrompt, getApiBaseUrl } from '../prompt'
 import { injectAuthIntoHtml, loadIntoIframe, openInNewTab } from '../sandbox'
 import { listSavedUIs, loadUI, saveUI } from '../save'
+import { defaultHtmlResponseSchema } from '../schemas'
 import { loadSpecFromUrl } from '../spec'
 import {
   type AuthHeaders,
@@ -562,15 +563,18 @@ async function loadDefaultHtmlFromUrl(
       )
     }
 
-    // Parse response - expect { html: string, title?: string }
-    const data = (await response.json()) as { html: string; title?: string }
+    // Parse and validate response with schema
+    const json: unknown = await response.json()
+    const result = defaultHtmlResponseSchema.safeParse(json)
 
-    if (!data.html) {
+    if (!result.success) {
       throw new ByofException(
         ByofErrorCode.NETWORK_ERROR,
-        'Default HTML response missing html field'
+        `Invalid default HTML response: ${result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
       )
     }
+
+    const data = result.data
 
     state.logger.debug('Default HTML fetched', {
       htmlLength: data.html.length,

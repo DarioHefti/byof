@@ -121,13 +121,14 @@ export async function saveUI(options: SaveOptions): Promise<SaveResponse> {
   })
 
   // Build response with exact types (exactOptionalPropertyTypes compliance)
+  // Use != null to filter out both null and undefined (nullish schema values)
   const saveResponse: SaveResponse = {
     id: parsed.id,
   }
-  if (parsed.name !== undefined) {
+  if (parsed.name != null) {
     saveResponse.name = parsed.name
   }
-  if (parsed.updatedAt !== undefined) {
+  if (parsed.updatedAt != null) {
     saveResponse.updatedAt = parsed.updatedAt
   }
 
@@ -189,24 +190,25 @@ export async function loadUI(options: LoadOptions): Promise<LoadResponse> {
   })
 
   // Build response with exact types (exactOptionalPropertyTypes compliance)
+  // Use != null to filter out both null and undefined (nullish schema values)
   const loadResponse: LoadResponse = {
     id: parsed.id,
     html: parsed.html,
   }
-  if (parsed.name !== undefined) {
+  if (parsed.name != null) {
     loadResponse.name = parsed.name
   }
-  if (parsed.messages !== undefined) {
+  if (parsed.messages != null) {
     loadResponse.messages = parsed.messages.map((m) => ({
       role: m.role,
       content: m.content,
       ts: m.ts,
     }))
   }
-  if (parsed.apiSpec !== undefined) {
+  if (parsed.apiSpec != null) {
     loadResponse.apiSpec = parsed.apiSpec
   }
-  if (parsed.updatedAt !== undefined) {
+  if (parsed.updatedAt != null) {
     loadResponse.updatedAt = parsed.updatedAt
   }
 
@@ -271,15 +273,16 @@ export async function listSavedUIs(
   })
 
   // Build response with exact types (exactOptionalPropertyTypes compliance)
+  // Use != null to filter out both null and undefined (nullish schema values)
   const listResponse: ListResponse = {
     items: parsed.items.map((item) => {
       const mappedItem: ListResponse['items'][number] = {
         id: item.id,
       }
-      if (item.name !== undefined) {
+      if (item.name != null) {
         mappedItem.name = item.name
       }
-      if (item.updatedAt !== undefined) {
+      if (item.updatedAt != null) {
         mappedItem.updatedAt = item.updatedAt
       }
       return mappedItem

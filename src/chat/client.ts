@@ -96,13 +96,14 @@ export async function sendChat(
   })
 
   // Build response with exact types (exactOptionalPropertyTypes compliance)
+  // Use != null to filter out both null and undefined (nullish schema values)
   const chatResponse: ChatResponse = {
     html: parsed.html,
   }
-  if (parsed.title !== undefined) {
+  if (parsed.title != null) {
     chatResponse.title = parsed.title
   }
-  if (parsed.message !== undefined) {
+  if (parsed.message != null) {
     chatResponse.message = parsed.message
   }
   if (warnings.length > 0) {

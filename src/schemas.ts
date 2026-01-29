@@ -15,9 +15,10 @@ export type MessageRole = z.infer<typeof messageRoleSchema>
 
 export const chatResponseSchema = z.object({
   html: z.string().min(1),
-  title: z.string().optional(),
+  // Use .nullish() to accept undefined (field absent) or null (JSON standard)
+  title: z.string().nullish(),
   // Optional message from AI with explanations, suggestions, or clarifications
-  message: z.string().optional(),
+  message: z.string().nullish(),
   // Normalize null/undefined warnings to empty array for backend flexibility
   // (.nullable() for null, .optional() for undefined, client normalizes to [])
   warnings: z.array(z.string()).nullable().optional(),
@@ -26,13 +27,26 @@ export const chatResponseSchema = z.object({
 export type ChatResponseParsed = z.infer<typeof chatResponseSchema>
 
 // ============================================================================
+// Default HTML Response Validation
+// ============================================================================
+
+export const defaultHtmlResponseSchema = z.object({
+  html: z.string().min(1),
+  // Use .nullish() to accept undefined (field absent) or null (JSON standard)
+  title: z.string().nullish(),
+})
+
+export type DefaultHtmlResponseParsed = z.infer<typeof defaultHtmlResponseSchema>
+
+// ============================================================================
 // Save Response Validation
 // ============================================================================
 
 export const saveResponseSchema = z.object({
   id: z.string().min(1),
-  name: z.string().optional(),
-  updatedAt: z.string().optional(),
+  // Use .nullish() to accept undefined (field absent) or null (JSON standard)
+  name: z.string().nullish(),
+  updatedAt: z.string().nullish(),
 })
 
 export type SaveResponseParsed = z.infer<typeof saveResponseSchema>
@@ -43,7 +57,8 @@ export type SaveResponseParsed = z.infer<typeof saveResponseSchema>
 
 export const loadResponseSchema = z.object({
   id: z.string().min(1),
-  name: z.string().optional(),
+  // Use .nullish() to accept undefined (field absent) or null (JSON standard)
+  name: z.string().nullish(),
   html: z.string().min(1),
   messages: z
     .array(
@@ -53,9 +68,9 @@ export const loadResponseSchema = z.object({
         ts: z.number(),
       })
     )
-    .optional(),
-  apiSpec: z.string().optional(),
-  updatedAt: z.string().optional(),
+    .nullish(),
+  apiSpec: z.string().nullish(),
+  updatedAt: z.string().nullish(),
 })
 
 export type LoadResponseParsed = z.infer<typeof loadResponseSchema>
@@ -68,8 +83,9 @@ export const listResponseSchema = z.object({
   items: z.array(
     z.object({
       id: z.string(),
-      name: z.string().optional(),
-      updatedAt: z.string().optional(),
+      // Use .nullish() to accept undefined (field absent) or null (JSON standard)
+      name: z.string().nullish(),
+      updatedAt: z.string().nullish(),
     })
   ),
 })
